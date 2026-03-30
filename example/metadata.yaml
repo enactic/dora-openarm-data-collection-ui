@@ -1,0 +1,18 @@
+location: Lab
+operator: Tester
+tasks:
+  - prompt: Pick a spoon.
+    description: Pick a spoon on a table.
+equipment:
+  id: Test
+  version: "1.0"
+  embodiments:
+    arms:
+      id: OpenArm
+      version: "2.0"
+  perceptions:
+    cameras:
+      left_wrist: {}
+      right_wrist: {}
+      ceiling: {}
+      head: {}
