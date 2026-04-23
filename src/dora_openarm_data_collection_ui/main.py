@@ -168,6 +168,11 @@ async def _main_async():
     task_dora = asyncio.create_task(_main_dora(server))
 
     await task_uvicorn
+    # Process may linger when dora exits via SIGTERM,
+    # as _main_dora() may not receive a STOP event.
+    # Set `state.running = False` when task_uvicorn exits
+    # so that _main_dora() also exits.
+    state.running = False
     await task_dora
 
 
