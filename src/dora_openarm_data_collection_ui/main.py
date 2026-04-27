@@ -20,11 +20,13 @@ from contextlib import asynccontextmanager
 import dataclasses
 import dora
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
+import json
 import os
 import pathlib
 import pyarrow as pa
+import threading
 import uvicorn
 import yaml
 
@@ -62,6 +64,13 @@ class State:
 
 state = State()
 
+_state_changed = asyncio.Condition()
+
+
+async def _notify_state_changed() -> None:
+    async with _state_changed:
+        _state_changed.notify_all()
+
 
 def next_task():
     """Update the state with the next task."""
@@ -69,6 +78,41 @@ def next_task():
     if state.task_index >= len(tasks):
         state.task_index = 0
     state.task_title = tasks[state.task_index]["prompt"]
+
+
+def _command_start():
+    """Start a new episode."""
+    node.send_output(
+        "command",
+        pa.array(["start"]),
+        {
+            "episode_number": state.episode_number,
+            "task_index": state.task_index,
+        },
+    )
+    state.collecting = True
+
+
+def _command_success():
+    """Finish the current episode successfully."""
+    node.send_output("command", pa.array(["success"]))
+    state.collecting = False
+    state.episode_number += 1
+    next_task()
+
+
+def _command_fail():
+    """Finish the current episode unsuccessfully."""
+    node.send_output("command", pa.array(["fail"]))
+    state.collecting = False
+    state.episode_number += 1
+    next_task()
+
+
+def _command_quit():
+    """Quit this data collection."""
+    node.send_output("command", pa.array(["quit"]))
+    state.running = False
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -81,16 +125,7 @@ def _root(request: Request):
 
 @app.post("/start")
 def _start(request: Request):
-    """Start a new episode."""
-    node.send_output(
-        "command",
-        pa.array(["start"]),
-        {
-            "episode_number": state.episode_number,
-            "task_index": state.task_index,
-        },
-    )
-    state.collecting = True
+    _command_start()
     return RedirectResponse(request.url_for("_root"), 303)
 
 
@@ -103,21 +138,13 @@ def _skip(request: Request):
 
 @app.post("/success")
 def _success(request: Request):
-    """Finish the current episode successfully."""
-    node.send_output("command", pa.array(["success"]))
-    state.collecting = False
-    state.episode_number += 1
-    next_task()
+    _command_success()
     return RedirectResponse(request.url_for("_root"), 303)
 
 
 @app.post("/fail")
 def _fail(request: Request):
-    """Finish the current episode unsuccessfully."""
-    node.send_output("command", pa.array(["fail"]))
-    state.collecting = False
-    state.episode_number += 1
-    next_task()
+    _command_fail()
     return RedirectResponse(request.url_for("_root"), 303)
 
 
@@ -130,11 +157,27 @@ def _cancel(request: Request):
     return RedirectResponse(request.url_for("_root"), 303)
 
 
+@app.get("/events")
+async def _events():
+    async def stream():
+        while state.running:
+            async with _state_changed:
+                await _state_changed.wait()
+            data = json.dumps(
+                {
+                    "collecting": state.collecting,
+                    "episode_number": state.episode_number,
+                    "task_index": state.task_index,
+                }
+            )
+            yield f"data: {data}\n\n"
+
+    return StreamingResponse(stream(), media_type="text/event-stream")
+
+
 @app.post("/quit")
 def _quit(request: Request):
-    """Quit this data collection."""
-    node.send_output("command", pa.array(["quit"]))
-    state.running = False
+    _command_quit()
     return RedirectResponse(request.url_for("_root"), 303)
 
 
@@ -148,15 +191,51 @@ async def _main_uvicorn(server):
     await server.serve()
 
 
+def _start_dora_event_loop() -> asyncio.Queue:
+    loop = asyncio.get_running_loop()
+    event_queue = asyncio.Queue()
+
+    def _thread():
+        for event in node:
+            loop.call_soon_threadsafe(event_queue.put_nowait, event)
+
+    threading.Thread(target=_thread, daemon=True).start()
+    return event_queue
+
+
 async def _main_dora(server):
     """Quit the Web application when this dataflow is stopped."""
+    event_queue = _start_dora_event_loop()
+
+    last_values = {}
+
     while state.running:
-        if node.is_empty():
-            await asyncio.sleep(1)
-            continue
-        event = node.next()
+        event = await event_queue.get()
         if event["type"] == "STOP":
             state.running = False
+        elif event["type"] == "INPUT":
+            event_id = event["id"]
+            if event_id not in ("button_a", "button_b"):
+                continue
+
+            value = event["value"][0].as_py()
+            triggered = value and not last_values.get(event_id, False)
+            last_values[event_id] = value
+            if not triggered:
+                continue
+
+            if state.collecting:
+                if event_id == "button_a":
+                    _command_success()
+                elif event_id == "button_b":
+                    _command_fail()
+            else:
+                if event_id == "button_a":
+                    _command_start()
+                elif event_id == "button_b":
+                    _command_quit()
+
+            await _notify_state_changed()
     server.should_exit = True
 
 
