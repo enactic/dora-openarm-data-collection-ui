@@ -240,6 +240,11 @@
           }
         }
       });
+
+      const eventSource = new EventSource("/events");
+      eventSource.onmessage = () => {
+        location.reload();
+      };
     </script>
   </body>
 </html>
