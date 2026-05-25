@@ -258,7 +258,7 @@ async def _main_dora(server):
     last_values = {}
     while state.running:
         if node.is_empty():
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.001)
             continue
         event = node.next()
         if event["type"] == "STOP":
