@@ -79,6 +79,7 @@ CAMERA_INPUTS = (
 )
 
 CAMERA_TIMESTAMP_WINDOW = 60
+CAMERA_STALE_AFTER_S = 1.0
 
 
 @dataclasses.dataclass
@@ -98,14 +99,18 @@ camera_timestamps: dict[str, collections.deque] = {
 def _event_ts_to_seconds(ts) -> float:
     """Normalize a dora event timestamp (datetime or ns int) to POSIX seconds."""
     if isinstance(ts, datetime.datetime):
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=datetime.timezone.utc)
         return ts.timestamp()
     if isinstance(ts, (int, float)):
         return float(ts) / 1e9
-    return time.monotonic()
+    return time.time()
 
 
 def _update_camera_stats(event_id: str, ts_s: float) -> None:
     series = camera_timestamps[event_id]
+    if series and ts_s - series[-1] > CAMERA_STALE_AFTER_S:
+        series.clear()
     series.append(ts_s)
     if len(series) < 2:
         return
@@ -228,12 +233,15 @@ async def _events() -> AsyncIterable[ServerSentEvent]:
 async def _stats() -> AsyncIterable[ServerSentEvent]:
     """Push camera FPS / jitter snapshots to the browser every 500 ms."""
     while state.running:
-        yield ServerSentEvent(
-            data={
-                name: {"fps": s.fps, "jitter_ms": s.jitter_ms}
-                for name, s in camera_stats.items()
-            }
-        )
+        now = time.time()
+        snapshot = {}
+        for name, s in camera_stats.items():
+            series = camera_timestamps[name]
+            if not series or now - series[-1] > CAMERA_STALE_AFTER_S:
+                snapshot[name] = {"fps": 0.0, "jitter_ms": 0.0}
+            else:
+                snapshot[name] = {"fps": s.fps, "jitter_ms": s.jitter_ms}
+        yield ServerSentEvent(data=snapshot)
         await asyncio.sleep(0.5)
 
 
