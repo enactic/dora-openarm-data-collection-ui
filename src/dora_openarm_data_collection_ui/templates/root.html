@@ -40,7 +40,7 @@
         text-shadow: 0 0 10px #00e5ff, 0 0 30px #00e5ff;
       }
 
-      div:not(.top-row):not(.status) > div:last-child {
+      div:not(.top-row):not(.status):not(.camera-stats) > div:last-child {
         color: #888;
         font-size: 18px;
         margin-top: 4px;
@@ -122,6 +122,39 @@
       }
 
       form { display: inline; }
+
+      .camera-stats {
+        background: #1a1a2e;
+        padding: 16px 24px;
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-width: 380px;
+      }
+      .camera-stats-title {
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
+        color: #888;
+        margin-bottom: 6px;
+      }
+      .stat-row {
+        display: grid;
+        grid-template-columns: 110px 90px 1fr;
+        gap: 12px;
+        align-items: baseline;
+        font-size: 16px;
+        color: #e0e0e0;
+      }
+      .stat-row .cam-name { color: #aaa; }
+      .stat-row .cam-fps { color: #00e5ff; font-weight: bold; }
+      .stat-row .cam-jitter { color: #888; }
+      .stat-row.warn .cam-jitter { color: #ffcc00; }
+      .stat-row.error .cam-fps,
+      .stat-row.error .cam-jitter { color: #ff3355; }
+      .stat-row.stale .cam-fps,
+      .stat-row.stale .cam-jitter { color: #555; }
     </style>
   </head>
   <body>
@@ -160,6 +193,35 @@
         <input class="big-button start" type="submit" value="Skip task">
       </form>
     {% endif -%}
+
+    <div class="camera-stats">
+      <div class="camera-stats-title">Camera streams</div>
+      <div class="stat-row stale" data-cam="camera_wrist_right">
+        <span class="cam-name">wrist R</span>
+        <span class="cam-fps">-- Hz</span>
+        <span class="cam-jitter">Δ -- ms</span>
+      </div>
+      <div class="stat-row stale" data-cam="camera_wrist_left">
+        <span class="cam-name">wrist L</span>
+        <span class="cam-fps">-- Hz</span>
+        <span class="cam-jitter">Δ -- ms</span>
+      </div>
+      <div class="stat-row stale" data-cam="camera_head_left">
+        <span class="cam-name">head L</span>
+        <span class="cam-fps">-- Hz</span>
+        <span class="cam-jitter">Δ -- ms</span>
+      </div>
+      <div class="stat-row stale" data-cam="camera_head_right">
+        <span class="cam-name">head R</span>
+        <span class="cam-fps">-- Hz</span>
+        <span class="cam-jitter">Δ -- ms</span>
+      </div>
+      <div class="stat-row stale" data-cam="camera_ceiling">
+        <span class="cam-name">ceiling</span>
+        <span class="cam-fps">-- Hz</span>
+        <span class="cam-jitter">Δ -- ms</span>
+      </div>
+    </div>
 
     {% if state.running -%}
       <form id="quit-form" action="{{ url_for("_quit") }}" method="post">
@@ -244,6 +306,35 @@
       const eventSource = new EventSource("/events");
       eventSource.onmessage = () => {
         location.reload();
+      };
+
+      const FPS_ERROR = 20;
+      const JITTER_WARN_MS = 10;
+      const JITTER_ERROR_MS = 30;
+
+      const statsSource = new EventSource("/stats");
+      statsSource.onmessage = (e) => {
+        const stats = JSON.parse(e.data);
+        for (const [cam, s] of Object.entries(stats)) {
+          const row = document.querySelector(`[data-cam="${cam}"]`);
+          if (!row) continue;
+          const fpsEl = row.querySelector(".cam-fps");
+          const jitterEl = row.querySelector(".cam-jitter");
+          if (!s || s.fps <= 0) {
+            fpsEl.textContent = "-- Hz";
+            jitterEl.textContent = "Δ -- ms";
+            row.classList.add("stale");
+            row.classList.remove("warn", "error");
+            continue;
+          }
+          row.classList.remove("stale");
+          fpsEl.textContent = s.fps.toFixed(1) + " Hz";
+          jitterEl.textContent = "Δ " + s.jitter_ms.toFixed(1) + " ms";
+          const isError = s.fps < FPS_ERROR || s.jitter_ms > JITTER_ERROR_MS;
+          const isWarn = !isError && s.jitter_ms > JITTER_WARN_MS;
+          row.classList.toggle("error", isError);
+          row.classList.toggle("warn", isWarn);
+        }
       };
     </script>
   </body>

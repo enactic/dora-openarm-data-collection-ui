@@ -16,8 +16,10 @@
 
 import argparse
 import asyncio
+import collections
 from contextlib import asynccontextmanager
 import dataclasses
+import datetime
 import dora
 from collections.abc import AsyncIterable
 from fastapi import FastAPI, Request
@@ -27,6 +29,7 @@ from fastapi.templating import Jinja2Templates
 import os
 import pathlib
 import pyarrow as pa
+import time
 import uvicorn
 import yaml
 
@@ -65,6 +68,61 @@ class State:
 state = State()
 
 _state_changed = asyncio.Condition()
+
+
+CAMERA_INPUTS = (
+    "camera_wrist_right",
+    "camera_wrist_left",
+    "camera_head_left",
+    "camera_head_right",
+    "camera_ceiling",
+)
+
+CAMERA_TIMESTAMP_WINDOW = 60
+CAMERA_STALE_AFTER_S = 1.0
+
+
+@dataclasses.dataclass
+class CameraStats:
+    """Rolling FPS / jitter stats for one camera stream."""
+
+    fps: float = 0.0
+    jitter_ms: float = 0.0
+
+
+camera_stats: dict[str, CameraStats] = {name: CameraStats() for name in CAMERA_INPUTS}
+camera_timestamps: dict[str, collections.deque] = {
+    name: collections.deque(maxlen=CAMERA_TIMESTAMP_WINDOW) for name in CAMERA_INPUTS
+}
+
+
+def _event_ts_to_seconds(ts) -> float:
+    """Normalize a dora event timestamp (datetime or ns int) to POSIX seconds."""
+    if isinstance(ts, datetime.datetime):
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=datetime.timezone.utc)
+        return ts.timestamp()
+    if isinstance(ts, (int, float)):
+        return float(ts) / 1e9
+    return time.time()
+
+
+def _update_camera_stats(event_id: str, ts_s: float) -> None:
+    series = camera_timestamps[event_id]
+    if series and ts_s - series[-1] > CAMERA_STALE_AFTER_S:
+        series.clear()
+    series.append(ts_s)
+    if len(series) < 2:
+        return
+    span = series[-1] - series[0]
+    if span <= 0:
+        return
+    fps = (len(series) - 1) / span
+    diffs = [series[i] - series[i - 1] for i in range(1, len(series))]
+    jitter_ms = (max(diffs) - min(diffs)) * 1e3
+    stats = camera_stats[event_id]
+    stats.fps = fps
+    stats.jitter_ms = jitter_ms
 
 
 async def _notify_state_changed() -> None:
@@ -171,6 +229,22 @@ async def _events() -> AsyncIterable[ServerSentEvent]:
         )
 
 
+@app.get("/stats", response_class=EventSourceResponse)
+async def _stats() -> AsyncIterable[ServerSentEvent]:
+    """Push camera FPS / jitter snapshots to the browser every 500 ms."""
+    while state.running:
+        now = time.time()
+        snapshot = {}
+        for name, s in camera_stats.items():
+            series = camera_timestamps[name]
+            if not series or now - series[-1] > CAMERA_STALE_AFTER_S:
+                snapshot[name] = {"fps": 0.0, "jitter_ms": 0.0}
+            else:
+                snapshot[name] = {"fps": s.fps, "jitter_ms": s.jitter_ms}
+        yield ServerSentEvent(data=snapshot)
+        await asyncio.sleep(0.5)
+
+
 @app.post("/quit")
 def _quit(request: Request):
     _command_quit()
@@ -192,13 +266,19 @@ async def _main_dora(server):
     last_values = {}
     while state.running:
         if node.is_empty():
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.001)
             continue
         event = node.next()
         if event["type"] == "STOP":
             state.running = False
         elif event["type"] == "INPUT":
             event_id = event["id"]
+            if event_id in CAMERA_INPUTS:
+                _update_camera_stats(
+                    event_id,
+                    _event_ts_to_seconds(event["metadata"].get("timestamp")),
+                )
+                continue
             if event_id not in ("button_a", "button_b"):
                 continue
 
