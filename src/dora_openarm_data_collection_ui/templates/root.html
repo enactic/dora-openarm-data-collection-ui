@@ -350,7 +350,7 @@
         }
       });
 
-      const eventSource = new EventSource("/events");
+      const eventSource = new EventSource("/events?since={{ state_version }}");
       eventSource.onmessage = () => {
         location.reload();
       };

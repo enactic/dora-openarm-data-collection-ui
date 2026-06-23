@@ -71,6 +71,12 @@ state = State()
 
 _state_changed = asyncio.Condition()
 
+# Monotonically incremented on every state change. The /events SSE is
+# level-triggered against this version (clients pass their last-seen version as
+# `?since=`), so a change that lands while a client is reconnecting after a page
+# reload is still delivered instead of being lost as a missed notify_all().
+state_version = 0
+
 
 CAMERA_INPUTS = (
     "camera_wrist_right",
@@ -132,7 +138,9 @@ def _update_camera_stats(event_id: str, ts_s: float) -> None:
 
 
 async def _notify_state_changed() -> None:
+    global state_version
     async with _state_changed:
+        state_version += 1
         _state_changed.notify_all()
 
 
@@ -193,7 +201,9 @@ def _command_arm_stop():
 def _root(request: Request):
     """Render the main HTML."""
     return templates.TemplateResponse(
-        request=request, name="root.html", context={"state": state}
+        request=request,
+        name="root.html",
+        context={"state": state, "state_version": state_version},
     )
 
 
@@ -232,10 +242,19 @@ def _cancel(request: Request):
 
 
 @app.get("/events", response_class=EventSourceResponse)
-async def _events() -> AsyncIterable[ServerSentEvent]:
+async def _events(request: Request) -> AsyncIterable[ServerSentEvent]:
+    try:
+        last_version = int(request.query_params.get("since"))
+    except (TypeError, ValueError):
+        last_version = state_version
     while state.running:
         async with _state_changed:
-            await _state_changed.wait()
+            await _state_changed.wait_for(
+                lambda: state_version != last_version or not state.running
+            )
+        if not state.running:
+            break
+        last_version = state_version
         yield ServerSentEvent(
             data={
                 "collecting": state.collecting,
@@ -243,7 +262,8 @@ async def _events() -> AsyncIterable[ServerSentEvent]:
                 "task_index": state.task_index,
                 "right_arm_status": state.right_arm_status,
                 "left_arm_status": state.left_arm_status,
-            }
+            },
+            id=str(state_version),
         )
 
 
