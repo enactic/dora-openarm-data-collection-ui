@@ -337,8 +337,13 @@ async def _main_dora(server):
                 )
                 continue
             if event_id in ARM_STATUS_INPUTS:
-                setattr(state, event_id, event["value"][0].as_py())
-                await _notify_state_changed()
+                value = event["value"][0].as_py()
+                # Only notify on an actual change. The follower may publish
+                # repeated (heartbeat) status values; reloading every /events
+                # client on each one would make the UI reload continuously.
+                if getattr(state, event_id) != value:
+                    setattr(state, event_id, value)
+                    await _notify_state_changed()
                 continue
             if event_id not in ("button_a", "button_b"):
                 continue
