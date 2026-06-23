@@ -63,6 +63,8 @@ class State:
     episode_number: int = 0
     task_index: int = 0
     task_title: str = ""
+    right_arm_status: str = "stopped"
+    left_arm_status: str = "stopped"
 
 
 state = State()
@@ -80,6 +82,10 @@ CAMERA_INPUTS = (
 
 CAMERA_TIMESTAMP_WINDOW = 60
 CAMERA_STALE_AFTER_S = 1.0
+
+# dora-openarm status inputs, one per arm. The input id matches the State field
+# name so the value can be assigned with setattr().
+ARM_STATUS_INPUTS = ("right_arm_status", "left_arm_status")
 
 
 @dataclasses.dataclass
@@ -173,6 +179,16 @@ def _command_quit():
     state.running = False
 
 
+def _command_arm_start():
+    """Start (power on) the arm(s)."""
+    node.send_output("arm_command", pa.array(["start"]))
+
+
+def _command_arm_stop():
+    """Pause (stop) the arm(s)."""
+    node.send_output("arm_command", pa.array(["stop"]))
+
+
 @app.get("/", response_class=HTMLResponse)
 def _root(request: Request):
     """Render the main HTML."""
@@ -225,6 +241,8 @@ async def _events() -> AsyncIterable[ServerSentEvent]:
                 "collecting": state.collecting,
                 "episode_number": state.episode_number,
                 "task_index": state.task_index,
+                "right_arm_status": state.right_arm_status,
+                "left_arm_status": state.left_arm_status,
             }
         )
 
@@ -251,6 +269,20 @@ def _quit(request: Request):
     return RedirectResponse(request.url_for("_root"), 303)
 
 
+@app.post("/arm/start")
+def _arm_start(request: Request):
+    """Start (power on) the arm(s)."""
+    _command_arm_start()
+    return RedirectResponse(request.url_for("_root"), 303)
+
+
+@app.post("/arm/stop")
+def _arm_stop(request: Request):
+    """Pause (stop) the arm(s)."""
+    _command_arm_stop()
+    return RedirectResponse(request.url_for("_root"), 303)
+
+
 def load_yaml(path):
     """Load a YAML file."""
     with open(path) as f:
@@ -263,6 +295,11 @@ async def _main_uvicorn(server):
 
 async def _main_dora(server):
     """Quit the Web application when this dataflow is stopped."""
+    # Bring the arm(s) up on boot. dora-openarm no longer auto-starts, so the UI
+    # sends the initial start. If this event is dropped before the followers have
+    # subscribed, the operator can use the Start Arm button (the status badges
+    # will still read "stopped").
+    _command_arm_start()
     last_values = {}
     while state.running:
         if node.is_empty():
@@ -278,6 +315,10 @@ async def _main_dora(server):
                     event_id,
                     _event_ts_to_seconds(event["metadata"].get("timestamp")),
                 )
+                continue
+            if event_id in ARM_STATUS_INPUTS:
+                setattr(state, event_id, event["value"][0].as_py())
+                await _notify_state_changed()
                 continue
             if event_id not in ("button_a", "button_b"):
                 continue

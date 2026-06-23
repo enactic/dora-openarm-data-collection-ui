@@ -72,6 +72,38 @@
         box-shadow: 0 0 12px rgba(0, 255, 136, 0.5), 0 0 24px rgba(0, 255, 136, 0.25);
       }
 
+      .arm-row {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        background: #1a1a2e;
+        padding: 16px 28px;
+        border-radius: 16px;
+      }
+      .arm-label {
+        font-size: 16px;
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
+        color: #888;
+      }
+      .arm-badge {
+        font-size: 16px;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        padding: 6px 16px;
+        border-radius: 9999px;
+        color: #0a0a0f;
+      }
+      .arm-badge.stopped { background: #888; }
+      .arm-badge.started { background: #ffcc00; }
+      .arm-badge.aligned { background: #00ff88; }
+      .big-button.arm-toggle {
+        font-size: 18px;
+        padding: 12px 28px;
+        margin: 0;
+      }
+
       .big-button {
         font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
         font-size: 28px;
@@ -167,6 +199,21 @@
         <div class="status collecting">Collecting</div>
       {% else -%}
         <div class="status idle">Idle</div>
+      {% endif -%}
+    </div>
+
+    <div class="arm-row">
+      <div class="arm-label">Arm</div>
+      <div class="arm-badge {{ state.right_arm_status }}">R: {{ state.right_arm_status | upper }}</div>
+      <div class="arm-badge {{ state.left_arm_status }}">L: {{ state.left_arm_status | upper }}</div>
+      {% if state.right_arm_status == "stopped" and state.left_arm_status == "stopped" -%}
+        <form id="arm-start-form" action="{{ url_for("_arm_start") }}" method="post">
+          <input class="big-button start arm-toggle" type="submit" value="Start Arm">
+        </form>
+      {% else -%}
+        <form id="arm-stop-form" action="{{ url_for("_arm_stop") }}" method="post">
+          <input class="big-button finish arm-toggle" type="submit" value="Pause Arm">
+        </form>
       {% endif -%}
     </div>
 
