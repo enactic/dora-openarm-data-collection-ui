@@ -204,8 +204,8 @@
 
     <div class="arm-row">
       <div class="arm-label">Arm</div>
-      <div class="arm-badge {{ state.right_arm_status }}">R: {{ state.right_arm_status | upper }}</div>
       <div class="arm-badge {{ state.left_arm_status }}">L: {{ state.left_arm_status | upper }}</div>
+      <div class="arm-badge {{ state.right_arm_status }}">R: {{ state.right_arm_status | upper }}</div>
       {% if state.right_arm_status == "stopped" and state.left_arm_status == "stopped" -%}
         <form id="arm-start-form" action="{{ url_for("_arm_start") }}" method="post">
           <input class="big-button start arm-toggle" type="submit" value="Start Arm">
@@ -301,7 +301,9 @@
         }
 
         if (event.key.toLowerCase() === "a") {
-          if (!cancelTimer) {
+          // On the start panel, `a` toggles the arm start/pause (handled on
+          // keyup). While collecting, `a` is fail (short) / cancel (long press).
+          if (!document.getElementById("start-form") && !cancelTimer) {
             cancelTimer = setTimeout(() => {
               cancelTimer = null;
               const cancelForm = document.getElementById("cancel-form");
@@ -341,7 +343,13 @@
         }
 
         if (event.key.toLowerCase() === "a") {
-          if (cancelTimer) {
+          if (document.getElementById("start-form")) {
+            // Start panel: toggle the arm start/pause.
+            const armForm =
+              document.getElementById("arm-start-form") ||
+              document.getElementById("arm-stop-form");
+            if (armForm) armForm.submit();
+          } else if (cancelTimer) {
             clearTimeout(cancelTimer);
             cancelTimer = null;
             const failForm = document.getElementById("fail-form");
