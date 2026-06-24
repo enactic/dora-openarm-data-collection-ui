@@ -63,8 +63,8 @@ class State:
     episode_number: int = 0
     task_index: int = 0
     task_title: str = ""
-    right_arm_status: str = "stopped"
-    left_arm_status: str = "stopped"
+    arm_status_right: str = "stopped"
+    arm_status_left: str = "stopped"
 
 
 state = State()
@@ -87,7 +87,7 @@ CAMERA_TIMESTAMP_WINDOW = 60
 CAMERA_STALE_AFTER_S = 1.0
 
 # dora-openarm status inputs, one per arm. The input id matches the State field
-ARM_STATUS_INPUTS = ("right_arm_status", "left_arm_status")
+ARM_STATUS_INPUTS = ("arm_status_right", "arm_status_left")
 
 
 @dataclasses.dataclass
@@ -256,8 +256,8 @@ async def _events(request: Request) -> AsyncIterable[ServerSentEvent]:
                 "collecting": state.collecting,
                 "episode_number": state.episode_number,
                 "task_index": state.task_index,
-                "right_arm_status": state.right_arm_status,
-                "left_arm_status": state.left_arm_status,
+                "arm_status_right": state.arm_status_right,
+                "arm_status_left": state.arm_status_left,
             },
             id=str(state_version),
         )

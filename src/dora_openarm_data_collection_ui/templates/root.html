@@ -204,8 +204,8 @@
 
     <div class="arm-row">
       <div class="arm-label">Arm</div>
-      <div class="arm-badge {{ state.left_arm_status }}">L: {{ state.left_arm_status | upper }}</div>
-      <div class="arm-badge {{ state.right_arm_status }}">R: {{ state.right_arm_status | upper }}</div>
+      <div class="arm-badge {{ state.arm_status_left }}">L: {{ state.arm_status_left | upper }}</div>
+      <div class="arm-badge {{ state.arm_status_right }}">R: {{ state.arm_status_right | upper }}</div>
       {% if state.right_arm_status == "stopped" and state.left_arm_status == "stopped" -%}
         <form id="arm-start-form" action="{{ url_for("_arm_start") }}" method="post">
           <input class="big-button start arm-toggle" type="submit" value="Start Arm">
