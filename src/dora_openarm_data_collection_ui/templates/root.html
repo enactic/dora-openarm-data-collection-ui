@@ -280,6 +280,7 @@
       const LONG_PRESS_MS = 1000;
       let skipTimer = null;
       let cancelTimer = null;
+      let armTimer = null;
       const focusableElements = [...document.querySelectorAll('input')];
 
       document.addEventListener("keydown", function(event) {
@@ -296,13 +297,21 @@
         }
 
         if (event.key.toLowerCase() === "b") {
-          const quitForm = document.getElementById("quit-form");
-          if (quitForm) quitForm.submit();
+          // `b` is quit (short press) / arm start-pause toggle (long press).
+          // The toggle works on both the start and collecting panels.
+          if (!armTimer) {
+            armTimer = setTimeout(() => {
+              armTimer = null;
+              const armForm =
+                document.getElementById("arm-start-form") ||
+                document.getElementById("arm-stop-form");
+              if (armForm) armForm.submit();
+            }, LONG_PRESS_MS);
+          }
         }
 
         if (event.key.toLowerCase() === "a") {
-          // On the start panel, `a` toggles the arm start/pause (handled on
-          // keyup). While collecting, `a` is fail (short) / cancel (long press).
+          // While collecting, `a` is fail (short) / cancel (long press).
           if (!document.getElementById("start-form") && !cancelTimer) {
             cancelTimer = setTimeout(() => {
               cancelTimer = null;
@@ -342,14 +351,19 @@
           }
         }
 
+        if (event.key.toLowerCase() === "b") {
+          // Short press (timer still pending): quit. A long press already
+          // fired the arm toggle from the timer, so do nothing here.
+          if (armTimer) {
+            clearTimeout(armTimer);
+            armTimer = null;
+            const quitForm = document.getElementById("quit-form");
+            if (quitForm) quitForm.submit();
+          }
+        }
+
         if (event.key.toLowerCase() === "a") {
-          if (document.getElementById("start-form")) {
-            // Start panel: toggle the arm start/pause.
-            const armForm =
-              document.getElementById("arm-start-form") ||
-              document.getElementById("arm-stop-form");
-            if (armForm) armForm.submit();
-          } else if (cancelTimer) {
+          if (cancelTimer) {
             clearTimeout(cancelTimer);
             cancelTimer = null;
             const failForm = document.getElementById("fail-form");

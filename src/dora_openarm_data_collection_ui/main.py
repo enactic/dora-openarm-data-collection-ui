@@ -71,10 +71,7 @@ state = State()
 
 _state_changed = asyncio.Condition()
 
-# Monotonically incremented on every state change. The /events SSE is
-# level-triggered against this version (clients pass their last-seen version as
-# `?since=`), so a change that lands while a client is reconnecting after a page
-# reload is still delivered instead of being lost as a missed notify_all().
+# Monotonically incremented on every state change.
 state_version = 0
 
 
@@ -90,7 +87,6 @@ CAMERA_TIMESTAMP_WINDOW = 60
 CAMERA_STALE_AFTER_S = 1.0
 
 # dora-openarm status inputs, one per arm. The input id matches the State field
-# name so the value can be assigned with setattr().
 ARM_STATUS_INPUTS = ("right_arm_status", "left_arm_status")
 
 
@@ -315,10 +311,7 @@ async def _main_uvicorn(server):
 
 async def _main_dora(server):
     """Quit the Web application when this dataflow is stopped."""
-    # Bring the arm(s) up on boot. dora-openarm no longer auto-starts, so the UI
-    # sends the initial start. If this event is dropped before the followers have
-    # subscribed, the operator can use the Start Arm button (the status badges
-    # will still read "stopped").
+    # Bring the arm(s) up on boot. dora-openarm no longer auto-starts
     _command_arm_start()
     last_values = {}
     while state.running:
@@ -338,9 +331,7 @@ async def _main_dora(server):
                 continue
             if event_id in ARM_STATUS_INPUTS:
                 value = event["value"][0].as_py()
-                # Only notify on an actual change. The follower may publish
-                # repeated (heartbeat) status values; reloading every /events
-                # client on each one would make the UI reload continuously.
+                # Only notify on an actual change. The follower may publish repeated (heartbeat) status values;
                 if getattr(state, event_id) != value:
                     setattr(state, event_id, value)
                     await _notify_state_changed()
