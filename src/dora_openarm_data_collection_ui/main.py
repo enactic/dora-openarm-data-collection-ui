@@ -89,6 +89,12 @@ CAMERA_STALE_AFTER_S = 1.0
 # dora-openarm status inputs, one per arm. The input id matches the State field
 ARM_STATUS_INPUTS = ("arm_status_right", "arm_status_left")
 
+# VR packet arrival times (ns) published by udp-receiver as `vr_recv_ts`.
+VR_RECV_INPUT = "vr_recv_ts"
+
+VR_TIMESTAMP_WINDOW = 120  # ~1.6 s of history at 72 Hz
+VR_STALE_AFTER_S = 1.0
+
 
 @dataclasses.dataclass
 class CameraStats:
@@ -102,6 +108,18 @@ camera_stats: dict[str, CameraStats] = {name: CameraStats() for name in CAMERA_I
 camera_timestamps: dict[str, collections.deque] = {
     name: collections.deque(maxlen=CAMERA_TIMESTAMP_WINDOW) for name in CAMERA_INPUTS
 }
+
+
+@dataclasses.dataclass
+class VrStreamStats:
+    """Rolling rate / jitter stats for the VR UDP stream."""
+
+    fps: float = 0.0
+    jitter_ms: float = 0.0
+
+
+vr_stats = VrStreamStats()
+vr_timestamps: collections.deque = collections.deque(maxlen=VR_TIMESTAMP_WINDOW)
 
 
 def _event_ts_to_seconds(ts) -> float:
@@ -131,6 +149,22 @@ def _update_camera_stats(event_id: str, ts_s: float) -> None:
     stats = camera_stats[event_id]
     stats.fps = fps
     stats.jitter_ms = jitter_ms
+
+
+def _update_vr_stats(ts_s: float) -> None:
+    """Fold one real VR packet arrival time (POSIX seconds) into the rolling stats."""
+    series = vr_timestamps
+    if series and ts_s - series[-1] > VR_STALE_AFTER_S:
+        series.clear()
+    series.append(ts_s)
+    if len(series) < 2:
+        return
+    span = series[-1] - series[0]
+    if span <= 0:
+        return
+    vr_stats.fps = (len(series) - 1) / span
+    diffs = [series[i] - series[i - 1] for i in range(1, len(series))]
+    vr_stats.jitter_ms = (max(diffs) - min(diffs)) * 1e3
 
 
 async def _notify_state_changed() -> None:
@@ -279,6 +313,19 @@ async def _stats() -> AsyncIterable[ServerSentEvent]:
         await asyncio.sleep(0.5)
 
 
+@app.get("/vr-stats", response_class=EventSourceResponse)
+async def _vr_stats() -> AsyncIterable[ServerSentEvent]:
+    """Push the real VR stream Hz / jitter snapshot to the browser every 500 ms."""
+    while state.running:
+        now = time.time()
+        if not vr_timestamps or now - vr_timestamps[-1] > VR_STALE_AFTER_S:
+            snapshot = {"fps": 0.0, "jitter_ms": 0.0}
+        else:
+            snapshot = {"fps": vr_stats.fps, "jitter_ms": vr_stats.jitter_ms}
+        yield ServerSentEvent(data=snapshot)
+        await asyncio.sleep(0.5)
+
+
 @app.post("/quit")
 def _quit(request: Request):
     _command_quit()
@@ -335,6 +382,10 @@ async def _main_dora(server):
                 if getattr(state, event_id) != value:
                     setattr(state, event_id, value)
                     await _notify_state_changed()
+                continue
+            if event_id == VR_RECV_INPUT:
+                for ts_ns in event["value"].to_pylist():
+                    _update_vr_stats(float(ts_ns) / 1e9)
                 continue
             if event_id not in ("button_a", "button_b"):
                 continue
