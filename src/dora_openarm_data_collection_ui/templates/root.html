@@ -187,6 +187,9 @@
       .stat-row.error .cam-jitter { color: #ff3355; }
       .stat-row.stale .cam-fps,
       .stat-row.stale .cam-jitter { color: #555; }
+
+      .vr-stats { margin-top: 12px; }
+      .vr-stats .cam-fps { color: #b388ff; }
     </style>
   </head>
   <body>
@@ -265,6 +268,15 @@
       </div>
       <div class="stat-row stale" data-cam="camera_ceiling">
         <span class="cam-name">ceiling</span>
+        <span class="cam-fps">-- Hz</span>
+        <span class="cam-jitter">Δ -- ms</span>
+      </div>
+    </div>
+
+    <div class="camera-stats vr-stats">
+      <div class="camera-stats-title">VR stream (raw UDP)</div>
+      <div class="stat-row stale" data-vr="vr_rx">
+        <span class="cam-name">VR</span>
         <span class="cam-fps">-- Hz</span>
         <span class="cam-jitter">Δ -- ms</span>
       </div>
@@ -404,6 +416,33 @@
           row.classList.toggle("error", isError);
           row.classList.toggle("warn", isWarn);
         }
+      };
+
+      const VR_FPS_ERROR = 50;        // expect ~72 Hz from the headset
+      const VR_JITTER_WARN_MS = 10;
+      const VR_JITTER_ERROR_MS = 30;
+
+      const vrStatsSource = new EventSource("/vr-stats");
+      vrStatsSource.onmessage = (e) => {
+        const s = JSON.parse(e.data);
+        const row = document.querySelector('[data-vr="vr_rx"]');
+        if (!row) return;
+        const fpsEl = row.querySelector(".cam-fps");
+        const jitterEl = row.querySelector(".cam-jitter");
+        if (!s || s.fps <= 0) {
+          fpsEl.textContent = "-- Hz";
+          jitterEl.textContent = "Δ -- ms";
+          row.classList.add("stale");
+          row.classList.remove("warn", "error");
+          return;
+        }
+        row.classList.remove("stale");
+        fpsEl.textContent = s.fps.toFixed(1) + " Hz";
+        jitterEl.textContent = "Δ " + s.jitter_ms.toFixed(1) + " ms";
+        const isError = s.fps < VR_FPS_ERROR || s.jitter_ms > VR_JITTER_ERROR_MS;
+        const isWarn = !isError && s.jitter_ms > VR_JITTER_WARN_MS;
+        row.classList.toggle("error", isError);
+        row.classList.toggle("warn", isWarn);
       };
     </script>
   </body>
