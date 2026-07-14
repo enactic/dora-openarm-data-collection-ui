@@ -89,8 +89,9 @@ CAMERA_STALE_AFTER_S = 1.0
 # dora-openarm status inputs, one per arm. The input id matches the State field
 ARM_STATUS_INPUTS = ("arm_status_right", "arm_status_left")
 
-# VR packet arrival times (ns) published by udp-receiver as `vr_recv_ts`.
-VR_RECV_INPUT = "vr_recv_ts"
+# VR packet arrival times (ns) published by udp-receiver as
+# `vr_receive_times` or `vr_recv_ts` (deprecated).
+VR_RECEIVE_TIMES_INPUTS = ("vr_receive_times", "vr_recv_ts")
 
 VR_TIMESTAMP_WINDOW = 120  # ~1.6 s of history at 72 Hz
 VR_STALE_AFTER_S = 1.0
@@ -383,7 +384,7 @@ async def _main_dora(server):
                     setattr(state, event_id, value)
                     await _notify_state_changed()
                 continue
-            if event_id == VR_RECV_INPUT:
+            if event_id in VR_RECEIVE_TIMES_INPUTS:
                 for ts_ns in event["value"].to_pylist():
                     _update_vr_stats(float(ts_ns) / 1e9)
                 continue
