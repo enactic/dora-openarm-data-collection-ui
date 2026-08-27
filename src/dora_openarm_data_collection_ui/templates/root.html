@@ -278,7 +278,7 @@
     </style>
   </head>
   <body>
-    <div id="cooldown-toast" class="cooldown-toast">Too fast — hold on a sec</div>
+    <div id="cooldown-toast" class="cooldown-toast">Recording too short — hold on a sec</div>
 
     <div class="top-row">
       <div class="episode">
@@ -405,24 +405,29 @@
 
     <script>
       const LONG_PRESS_MS = 1000;
-      // Each c-triggered start/finish toggle submits a real <form> and
-      // navigates the page (POST -> 303 redirect), so an in-memory
-      // timestamp would reset on every toggle. sessionStorage survives
-      // that navigation within the same tab.
-      const C_COOLDOWN_MS = 1000;
-      const C_COOLDOWN_KEY = "lastCActionAt";
+      // A start->finish toggle is two separate <form> submits (page
+      // navigations, since these POST and 303-redirect), so we can't just
+      // debounce the keypress -- we need to remember when recording
+      // started and refuse to finish too soon after. sessionStorage
+      // survives the navigation between the two within the same tab.
+      const MIN_RECORDING_MS = 1000;
+      const RECORDING_STARTED_KEY = "collectingStartedAt";
       let skipTimer = null;
       let cancelTimer = null;
       let armTimer = null;
       let cooldownToastTimer = null;
       const focusableElements = [...document.querySelectorAll('input')];
 
-      function getLastCActionAt() {
-        return Number(sessionStorage.getItem(C_COOLDOWN_KEY) || 0);
+      function getRecordingStartedAt() {
+        return Number(sessionStorage.getItem(RECORDING_STARTED_KEY) || 0);
       }
 
-      function setLastCActionAt(timestamp) {
-        sessionStorage.setItem(C_COOLDOWN_KEY, String(timestamp));
+      function setRecordingStartedAt(timestamp) {
+        sessionStorage.setItem(RECORDING_STARTED_KEY, String(timestamp));
+      }
+
+      function recordingTooShort() {
+        return Date.now() - getRecordingStartedAt() < MIN_RECORDING_MS;
       }
 
       function showCooldownToast() {
@@ -495,17 +500,21 @@
             clearTimeout(skipTimer);
             skipTimer = null;
 
-            const now = Date.now();
-            if (now - getLastCActionAt() < C_COOLDOWN_MS) {
-              showCooldownToast();
-              return;
-            }
-            setLastCActionAt(now);
-
             const startForm = document.getElementById("start-form");
-            if (startForm) startForm.submit();
             const finishForm = document.getElementById("finish-form");
-            if (finishForm) finishForm.submit();
+
+            if (finishForm) {
+              if (recordingTooShort()) {
+                showCooldownToast();
+                return;
+              }
+              finishForm.submit();
+            }
+
+            if (startForm) {
+              setRecordingStartedAt(Date.now());
+              startForm.submit();
+            }
           }
         }
 
@@ -525,7 +534,13 @@
             clearTimeout(cancelTimer);
             cancelTimer = null;
             const failForm = document.getElementById("fail-form");
-            if (failForm) failForm.submit();
+            if (failForm) {
+              if (recordingTooShort()) {
+                showCooldownToast();
+                return;
+              }
+              failForm.submit();
+            }
           }
         }
       });
