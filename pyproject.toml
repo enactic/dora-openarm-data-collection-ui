@@ -22,7 +22,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 
 dependencies = [
-  "dora-rs >= 0.3.9",
+  "dora-rs >= 0.5.0",
   "fastapi[standard]",
   "uvicorn",
 ]
