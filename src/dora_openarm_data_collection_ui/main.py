@@ -21,6 +21,7 @@ from contextlib import asynccontextmanager
 import dataclasses
 import datetime
 import dora
+import json
 from collections.abc import AsyncIterable
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -89,6 +90,33 @@ CAMERA_STALE_AFTER_S = 1.0
 # dora-openarm status inputs, one per arm. The input id matches the State field
 ARM_STATUS_INPUTS = ("arm_status_right", "arm_status_left")
 
+# dora-openarm state inputs, one per arm, carrying per-motor MOSFET and rotor
+# temperatures. They arrive at the leader's rate (250 Hz), so the handler only
+# stores the latest sample; the browser is fed from /arm-temperatures instead.
+ARM_STATE_INPUTS = {"arm_state_right": "right", "arm_state_left": "left"}
+
+# A reading older than this is shown as unknown rather than as the last value,
+# so a follower that stopped answering does not look merely cool.
+ARM_TEMPERATURE_STALE_AFTER_S = 3.0
+
+# Shortest gap between two parses of an arm's state. The arms report at the
+# leader's rate and the browser is fed every 500 ms, so converting every
+# message out of Arrow would be ~50x more work than anyone can see.
+ARM_STATE_PARSE_INTERVAL_S = 0.2
+
+# The leader's own stream. `ker_metadata` names the device and is sent once
+# at startup, so it is remembered rather than polled; `ker_position` is only
+# read for its arrival time, the same way the camera rows are.
+KER_METADATA_INPUT = "ker_metadata"
+KER_POSITION_INPUT = "ker_position"
+KER_TIMESTAMP_WINDOW = 120
+KER_STALE_AFTER_S = 1.0
+
+# Which inputs have ever delivered something. A dataflow wires up only the
+# nodes it uses, and a node is never told what it was wired to, so a panel
+# earns its place on screen by having produced data at least once.
+seen_inputs: set[str] = set()
+
 # VR packet arrival times (ns) published by udp-receiver as
 # `vr_receive_times` or `vr_recv_ts` (deprecated).
 VR_RECEIVE_TIMES_INPUTS = ("vr_receive_times", "vr_recv_ts")
@@ -122,6 +150,53 @@ class VrStreamStats:
 vr_stats = VrStreamStats()
 vr_timestamps: collections.deque = collections.deque(maxlen=VR_TIMESTAMP_WINDOW)
 
+ker_stats = VrStreamStats()
+ker_timestamps: collections.deque = collections.deque(maxlen=KER_TIMESTAMP_WINDOW)
+ker_device: dict = {}
+
+
+@dataclasses.dataclass
+class ArmHealth:
+    """Latest per-motor and bus readings for one arm.
+
+    Temperatures are in Celsius: `mos` is the driver MOSFET, `rotor` the
+    motor itself. Both are kept because either can be the one that
+    overheats -- the MOSFET leads under a sustained current, the rotor lags
+    but stays hot for longer.
+
+    `motor_status` is what each motor says about itself, or "SILENT" for one
+    that stopped answering. A motor that is merely unplugged raises no bus
+    error at all, so this is the only place it shows.
+
+    `bus` holds openarm_can's per-interface counters. They latch, so what an
+    operator wants -- what happened during this episode -- is the difference
+    against `bus_baseline`, which is reset when an episode starts.
+    """
+
+    mos: list[int] = dataclasses.field(default_factory=list)
+    rotor: list[int] = dataclasses.field(default_factory=list)
+    motor_status: list[str] = dataclasses.field(default_factory=list)
+    has_gripper: bool = False
+    bus: dict = dataclasses.field(default_factory=dict)
+    bus_baseline: dict = dataclasses.field(default_factory=dict)
+    updated_at: float = 0.0
+
+
+arm_health: dict[str, ArmHealth] = {
+    side: ArmHealth() for side in ARM_STATE_INPUTS.values()
+}
+
+# Bus counters worth surfacing, worst last: the badge shows the heaviest one
+# that moved, so the order here is the severity order.
+BUS_COUNTER_SEVERITY = (
+    ("error_warning", "WARNING"),
+    ("tx_overflow", "OVERFLOW"),
+    ("rx_overflow", "OVERFLOW"),
+    ("error_passive", "ERROR-PASSIVE"),
+    ("ack_error", "NO ACK"),
+    ("bus_off", "BUS-OFF"),
+)
+
 
 def _event_ts_to_seconds(ts) -> float:
     """Normalize a dora event timestamp (datetime or ns int) to POSIX seconds."""
@@ -134,9 +209,14 @@ def _event_ts_to_seconds(ts) -> float:
     return time.time()
 
 
-def _update_camera_stats(event_id: str, ts_s: float) -> None:
-    series = camera_timestamps[event_id]
-    if series and ts_s - series[-1] > CAMERA_STALE_AFTER_S:
+def _fold_arrival(series, stats, ts_s: float, stale_after_s: float) -> None:
+    """Fold one arrival time into a rolling rate / jitter estimate.
+
+    A gap longer than `stale_after_s` restarts the window, so the rate
+    reported after a stall describes the stream now rather than averaging
+    across the outage.
+    """
+    if series and ts_s - series[-1] > stale_after_s:
         series.clear()
     series.append(ts_s)
     if len(series) < 2:
@@ -144,12 +224,109 @@ def _update_camera_stats(event_id: str, ts_s: float) -> None:
     span = series[-1] - series[0]
     if span <= 0:
         return
-    fps = (len(series) - 1) / span
     diffs = [series[i] - series[i - 1] for i in range(1, len(series))]
-    jitter_ms = (max(diffs) - min(diffs)) * 1e3
-    stats = camera_stats[event_id]
-    stats.fps = fps
-    stats.jitter_ms = jitter_ms
+    stats.fps = (len(series) - 1) / span
+    stats.jitter_ms = (max(diffs) - min(diffs)) * 1e3
+
+
+def _update_camera_stats(event_id: str, ts_s: float) -> None:
+    _fold_arrival(
+        camera_timestamps[event_id],
+        camera_stats[event_id],
+        ts_s,
+        CAMERA_STALE_AFTER_S,
+    )
+
+
+def _update_arm_health(side: str, value) -> None:
+    """Record one dora-openarm `state` message.
+
+    The payload is a length-1 StructArray. `tmos`, `trotor` and
+    `motor_status` are one entry per motor, in the order the driver reports
+    them (joints, then gripper); `bus` covers the interface as a whole.
+    """
+    health = arm_health[side]
+    now = time.time()
+    if now - health.updated_at < ARM_STATE_PARSE_INTERVAL_S:
+        return
+    names = value.type.names if pa.types.is_struct(value.type) else ()
+    try:
+        if "tmos" in names:
+            health.mos = [int(v) for v in value.field("tmos")[0].as_py()]
+            health.rotor = [int(v) for v in value.field("trotor")[0].as_py()]
+        if "motor_status" in names:
+            health.motor_status = list(value.field("motor_status")[0].as_py())
+        if "has_gripper" in names:
+            health.has_gripper = bool(value.field("has_gripper")[0].as_py())
+        if "bus" in names:
+            health.bus = dict(value.field("bus")[0].as_py() or {})
+            if not health.bus_baseline:
+                health.bus_baseline = dict(health.bus)
+        health.updated_at = now
+    except (AttributeError, KeyError, TypeError, ValueError):
+        # An older dora-openarm publishes a state without these. Not having
+        # them is not a reason to drop the message or to stop.
+        pass
+
+
+def _reset_bus_baselines() -> None:
+    """Make the bus badges read "during this episode" from here on.
+
+    The counters latch by design, so that a bus-off the driver recovers from
+    within milliseconds is not missed. Without a baseline the badge would go
+    red once and stay red for the rest of the session.
+    """
+    for health in arm_health.values():
+        health.bus_baseline = dict(health.bus)
+
+
+def _bus_state(health: ArmHealth) -> dict:
+    """Worst bus condition for one arm, and how often it happened.
+
+    `carrier` is the only instantaneous reading. Everything else is counted,
+    so a fault that has since recovered reports as RECOVERED rather than as
+    though it were still happening.
+    """
+    if not health.bus:
+        return {"state": "UNKNOWN", "count": 0, "severity": "unknown"}
+    if not health.bus.get("carrier", True):
+        # IFF_UP is clear only when the interface was taken down; a bus-off
+        # with no auto-restart leaves it up but without carrier.
+        down = health.bus.get("net_down", 0) - health.bus_baseline.get("net_down", 0)
+        return {
+            "state": "IF DOWN" if down > 0 else "NO CARRIER",
+            "count": 0,
+            "severity": "error",
+        }
+
+    worst, count = None, 0
+    for name, label in BUS_COUNTER_SEVERITY:
+        delta = health.bus.get(name, 0) - health.bus_baseline.get(name, 0)
+        if delta > 0:
+            worst, count = label, delta
+    if worst is None:
+        return {"state": "OK", "count": 0, "severity": "ok"}
+    # It happened, but the link is carrying traffic again.
+    return {"state": f"RECOVERED ({worst})", "count": count, "severity": "warn"}
+
+
+def _update_ker_device(value) -> None:
+    """Remember what the leader said about itself.
+
+    Sent once when the leader starts, so a UI that connected later simply
+    never sees it. That only costs the device name; the panel itself is
+    earned by the position stream.
+    """
+    try:
+        payload = value[0].as_py()
+        ker_device.update(json.loads(payload) if isinstance(payload, str) else payload)
+    except (AttributeError, IndexError, TypeError, ValueError, json.JSONDecodeError):
+        pass
+
+
+def _update_ker_stats(ts_s: float) -> None:
+    """Fold one leader sample arrival time into the rolling stats."""
+    _fold_arrival(ker_timestamps, ker_stats, ts_s, KER_STALE_AFTER_S)
 
 
 def _update_vr_stats(ts_s: float) -> None:
@@ -193,6 +370,8 @@ def _command_start():
             "task_index": state.task_index,
         },
     )
+    # From here the bus badges report this episode, not the whole session.
+    _reset_bus_baselines()
     state.collecting = True
 
 
@@ -305,6 +484,10 @@ async def _stats() -> AsyncIterable[ServerSentEvent]:
         now = time.time()
         snapshot = {}
         for name, s in camera_stats.items():
+            if name not in seen_inputs:
+                # Not wired in this dataflow; the row stays hidden rather
+                # than sitting at "-- Hz" for the whole session.
+                continue
             series = camera_timestamps[name]
             if not series or now - series[-1] > CAMERA_STALE_AFTER_S:
                 snapshot[name] = {"fps": 0.0, "jitter_ms": 0.0}
@@ -323,6 +506,50 @@ async def _vr_stats() -> AsyncIterable[ServerSentEvent]:
             snapshot = {"fps": 0.0, "jitter_ms": 0.0}
         else:
             snapshot = {"fps": vr_stats.fps, "jitter_ms": vr_stats.jitter_ms}
+        snapshot["present"] = any(i in seen_inputs for i in VR_RECEIVE_TIMES_INPUTS)
+        yield ServerSentEvent(data=snapshot)
+        await asyncio.sleep(0.5)
+
+
+@app.get("/ker-stats", response_class=EventSourceResponse)
+async def _ker_stats() -> AsyncIterable[ServerSentEvent]:
+    """Push the leader stream rate and the device it came from every 500 ms."""
+    while state.running:
+        now = time.time()
+        if not ker_timestamps or now - ker_timestamps[-1] > KER_STALE_AFTER_S:
+            snapshot = {"fps": 0.0, "jitter_ms": 0.0}
+        else:
+            snapshot = {"fps": ker_stats.fps, "jitter_ms": ker_stats.jitter_ms}
+        snapshot["present"] = KER_POSITION_INPUT in seen_inputs
+        snapshot["device"] = ker_device
+        yield ServerSentEvent(data=snapshot)
+        await asyncio.sleep(0.5)
+
+
+@app.get("/arm-health", response_class=EventSourceResponse)
+async def _arm_health() -> AsyncIterable[ServerSentEvent]:
+    """Push per-motor temperatures, motor status and bus state every 500 ms.
+
+    Sampled rather than pushed on change: the arms report at 250 Hz, and
+    none of this needs to reach an operator sooner than this.
+    """
+    while state.running:
+        now = time.time()
+        snapshot = {}
+        for side, health in arm_health.items():
+            fresh = health.updated_at and now - health.updated_at <= (
+                ARM_TEMPERATURE_STALE_AFTER_S
+            )
+            snapshot[side] = {
+                "present": f"arm_state_{side}" in seen_inputs,
+                "mos": health.mos if fresh else [],
+                "rotor": health.rotor if fresh else [],
+                "motor_status": health.motor_status if fresh else [],
+                "has_gripper": health.has_gripper,
+                "bus": _bus_state(health)
+                if fresh
+                else {"state": "UNKNOWN", "count": 0, "severity": "unknown"},
+            }
         yield ServerSentEvent(data=snapshot)
         await asyncio.sleep(0.5)
 
@@ -371,6 +598,15 @@ async def _main_dora(server):
             state.running = False
         elif event["type"] == "INPUT":
             event_id = event["id"]
+            seen_inputs.add(event_id)
+            if event_id == KER_METADATA_INPUT:
+                _update_ker_device(event["value"])
+                continue
+            if event_id == KER_POSITION_INPUT:
+                _update_ker_stats(
+                    _event_ts_to_seconds(event["metadata"].get("timestamp"))
+                )
+                continue
             if event_id in CAMERA_INPUTS:
                 _update_camera_stats(
                     event_id,
@@ -383,6 +619,11 @@ async def _main_dora(server):
                 if getattr(state, event_id) != value:
                     setattr(state, event_id, value)
                     await _notify_state_changed()
+                continue
+            if event_id in ARM_STATE_INPUTS:
+                # Store only. Notifying here would push an SSE frame 250
+                # times a second per arm; /arm-temperatures samples instead.
+                _update_arm_health(ARM_STATE_INPUTS[event_id], event["value"])
                 continue
             if event_id in VR_RECEIVE_TIMES_INPUTS:
                 for ts_ns in event["value"].to_pylist():
