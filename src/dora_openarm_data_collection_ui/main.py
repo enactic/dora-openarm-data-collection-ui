@@ -176,7 +176,6 @@ class ArmHealth:
     mos: list[int] = dataclasses.field(default_factory=list)
     rotor: list[int] = dataclasses.field(default_factory=list)
     motor_status: list[str] = dataclasses.field(default_factory=list)
-    has_gripper: bool = False
     bus: dict = dataclasses.field(default_factory=dict)
     bus_baseline: dict = dataclasses.field(default_factory=dict)
     updated_at: float = 0.0
@@ -256,8 +255,6 @@ def _update_arm_health(side: str, value) -> None:
             health.rotor = [int(v) for v in value.field("trotor")[0].as_py()]
         if "motor_status" in names:
             health.motor_status = list(value.field("motor_status")[0].as_py())
-        if "has_gripper" in names:
-            health.has_gripper = bool(value.field("has_gripper")[0].as_py())
         if "bus" in names:
             health.bus = dict(value.field("bus")[0].as_py() or {})
             if not health.bus_baseline:
@@ -545,7 +542,6 @@ async def _arm_health() -> AsyncIterable[ServerSentEvent]:
                 "mos": health.mos if fresh else [],
                 "rotor": health.rotor if fresh else [],
                 "motor_status": health.motor_status if fresh else [],
-                "has_gripper": health.has_gripper,
                 "bus": _bus_state(health)
                 if fresh
                 else {"state": "UNKNOWN", "count": 0, "severity": "unknown"},

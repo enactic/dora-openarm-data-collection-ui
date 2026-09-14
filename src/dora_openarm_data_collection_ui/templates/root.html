@@ -622,13 +622,13 @@
         if (bus.severity !== "unknown") badge.classList.add(bus.severity);
       };
 
-      // Joints are named from the data rather than baked into the page: an
-      // arm without a gripper has one more joint and no GRIP row, and only
-      // the driver knows which it is.
-      const jointLabel = (i, count, hasGripper) =>
-        hasGripper && i === count - 1 ? "GRIP" : "J" + (i + 1);
+      // Joints are named from the data rather than baked into the page. The
+      // last axis is always the gripper -- OpenArm's motor count is fixed
+      // whether it is driven in POS_FORCE or MIT mode, so this does not
+      // depend on which.
+      const jointLabel = (i, count) => (i === count - 1 ? "GRIP" : "J" + (i + 1));
 
-      const syncRows = (panel, count, hasGripper) => {
+      const syncRows = (panel, count) => {
         const host = panel.querySelector(".temp-rows");
         if (host.children.length === count) return;
         host.replaceChildren();
@@ -641,8 +641,7 @@
             '<span class="mos unknown">--</span>' +
             '<span class="rotor unknown">--</span>' +
             '<span class="mstatus">--</span>';
-          row.querySelector(".joint").textContent =
-            jointLabel(i, count, hasGripper);
+          row.querySelector(".joint").textContent = jointLabel(i, count);
           host.append(row);
         }
       };
@@ -660,7 +659,7 @@
             s.mos?.length ?? 0,
             s.motor_status?.length ?? 0,
           );
-          syncRows(panel, count, s.has_gripper === true);
+          syncRows(panel, count);
           setBusBadge(panel, s.bus);
           for (const row of panel.querySelectorAll(".temp-row")) {
             const i = Number(row.dataset.joint);
