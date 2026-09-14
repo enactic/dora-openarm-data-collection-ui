@@ -260,9 +260,14 @@ def _update_arm_health(side: str, value) -> None:
             if not health.bus_baseline:
                 health.bus_baseline = dict(health.bus)
         health.updated_at = now
-    except (AttributeError, KeyError, TypeError, ValueError):
-        # An older dora-openarm publishes a state without these. Not having
-        # them is not a reason to drop the message or to stop.
+    except Exception:
+        # An older (or differently shaped) dora-openarm state must never take
+        # the whole node down: _main_dora's event loop has no guard around
+        # its dispatch, so an exception here kills every panel, not just this
+        # one. Broad on purpose -- some pyarrow errors (ArrowIndexError,
+        # ArrowNotImplementedError) fall outside AttributeError/KeyError/
+        # TypeError/ValueError, so a narrower catch would still let a
+        # malformed message escape.
         pass
 
 
