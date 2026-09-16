@@ -126,31 +126,22 @@ VR_STALE_AFTER_S = 1.0
 
 
 @dataclasses.dataclass
-class CameraStats:
-    """Rolling FPS / jitter stats for one camera stream."""
+class StreamStats:
+    """Rolling rate / jitter stats for one input stream (camera, VR, leader)."""
 
     fps: float = 0.0
     jitter_ms: float = 0.0
 
 
-camera_stats: dict[str, CameraStats] = {name: CameraStats() for name in CAMERA_INPUTS}
+camera_stats: dict[str, StreamStats] = {name: StreamStats() for name in CAMERA_INPUTS}
 camera_timestamps: dict[str, collections.deque] = {
     name: collections.deque(maxlen=CAMERA_TIMESTAMP_WINDOW) for name in CAMERA_INPUTS
 }
 
-
-@dataclasses.dataclass
-class VrStreamStats:
-    """Rolling rate / jitter stats for the VR UDP stream."""
-
-    fps: float = 0.0
-    jitter_ms: float = 0.0
-
-
-vr_stats = VrStreamStats()
+vr_stats = StreamStats()
 vr_timestamps: collections.deque = collections.deque(maxlen=VR_TIMESTAMP_WINDOW)
 
-ker_stats = VrStreamStats()
+ker_stats = StreamStats()
 ker_timestamps: collections.deque = collections.deque(maxlen=KER_TIMESTAMP_WINDOW)
 ker_device: dict = {}
 
