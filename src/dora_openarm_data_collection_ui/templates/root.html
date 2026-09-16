@@ -252,9 +252,34 @@
       .bus-badge.ok { background: #06301c; color: #00e676; }
       .bus-badge.warn { background: #33290a; color: #ffcc00; }
       .bus-badge.error { background: #3a0d16; color: #ff3355; }
+
+      .cooldown-toast {
+        position: fixed;
+        bottom: 32px;
+        left: 50%;
+        transform: translateX(-50%) translateY(20px);
+        background: #1a1a2e;
+        color: #ffcc00;
+        border: 2px solid rgba(255, 204, 0, 0.5);
+        padding: 12px 28px;
+        border-radius: 9999px;
+        font-size: 16px;
+        font-weight: bold;
+        letter-spacing: 0.05em;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.15s ease, transform 0.15s ease;
+        box-shadow: 0 0 12px rgba(255, 204, 0, 0.25);
+      }
+      .cooldown-toast.show {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
     </style>
   </head>
   <body>
+    <div id="cooldown-toast" class="cooldown-toast">Recording too short — hold on a sec</div>
+
     <div class="top-row">
       <div class="episode">
         Episode: {{ state.episode_number }}
@@ -380,10 +405,38 @@
 
     <script>
       const LONG_PRESS_MS = 1000;
+      // A start->finish toggle is two separate <form> submits (page
+      // navigations, since these POST and 303-redirect), so we can't just
+      // debounce the keypress -- we need to remember when recording
+      // started and refuse to finish too soon after. sessionStorage
+      // survives the navigation between the two within the same tab.
+      const MIN_RECORDING_MS = 1000;
+      const RECORDING_STARTED_KEY = "collectingStartedAt";
       let skipTimer = null;
       let cancelTimer = null;
       let armTimer = null;
+      let cooldownToastTimer = null;
       const focusableElements = [...document.querySelectorAll('input')];
+
+      function getRecordingStartedAt() {
+        return Number(sessionStorage.getItem(RECORDING_STARTED_KEY) || 0);
+      }
+
+      function setRecordingStartedAt(timestamp) {
+        sessionStorage.setItem(RECORDING_STARTED_KEY, String(timestamp));
+      }
+
+      function recordingTooShort() {
+        return Date.now() - getRecordingStartedAt() < MIN_RECORDING_MS;
+      }
+
+      function showCooldownToast() {
+        const toast = document.getElementById("cooldown-toast");
+        if (!toast) return;
+        toast.classList.add("show");
+        clearTimeout(cooldownToastTimer);
+        cooldownToastTimer = setTimeout(() => toast.classList.remove("show"), 800);
+      }
 
       document.addEventListener("keydown", function(event) {
         if (event.repeat) return;
@@ -446,10 +499,22 @@
           if (skipTimer) {
             clearTimeout(skipTimer);
             skipTimer = null;
+
             const startForm = document.getElementById("start-form");
-            if (startForm) startForm.submit();
             const finishForm = document.getElementById("finish-form");
-            if (finishForm) finishForm.submit();
+
+            if (finishForm) {
+              if (recordingTooShort()) {
+                showCooldownToast();
+                return;
+              }
+              finishForm.submit();
+            }
+
+            if (startForm) {
+              setRecordingStartedAt(Date.now());
+              startForm.submit();
+            }
           }
         }
 
@@ -469,7 +534,13 @@
             clearTimeout(cancelTimer);
             cancelTimer = null;
             const failForm = document.getElementById("fail-form");
-            if (failForm) failForm.submit();
+            if (failForm) {
+              if (recordingTooShort()) {
+                showCooldownToast();
+                return;
+              }
+              failForm.submit();
+            }
           }
         }
       });
