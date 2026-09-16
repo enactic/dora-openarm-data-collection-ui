@@ -92,7 +92,7 @@ ARM_STATUS_INPUTS = ("arm_status_right", "arm_status_left")
 
 # dora-openarm state inputs, one per arm, carrying per-motor MOSFET and rotor
 # temperatures. They arrive at the leader's rate (250 Hz), so the handler only
-# stores the latest sample; the browser is fed from /arm-temperatures instead.
+# stores the latest sample; the browser is fed from /arm-health instead.
 ARM_STATE_INPUTS = {"arm_state_right": "right", "arm_state_left": "left"}
 
 # A reading older than this is shown as unknown rather than as the last value,
@@ -614,7 +614,7 @@ async def _main_dora(server):
                 continue
             if event_id in ARM_STATE_INPUTS:
                 # Store only. Notifying here would push an SSE frame 250
-                # times a second per arm; /arm-temperatures samples instead.
+                # times a second per arm; /arm-health samples instead.
                 _update_arm_health(ARM_STATE_INPUTS[event_id], event["value"])
                 continue
             if event_id in VR_RECEIVE_TIMES_INPUTS:
