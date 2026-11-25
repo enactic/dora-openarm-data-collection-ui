@@ -1,0 +1,37 @@
+/* --- Full-screen notices ---------------------------------------- */
+
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+  background: rgba(17, 17, 17, 0.94);
+}
+.overlay .title { font-size: 24px; font-weight: bold; color: var(--bad); }
+.overlay .hint { max-width: 640px; line-height: 1.7; }
+#ending-panel .title { color: var(--text); }
+
+.cooldown-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  background: var(--panel);
+  color: var(--warn);
+  border: 1px solid var(--warn);
+  padding: 8px 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+.cooldown-toast.show { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .cooldown-toast { transition: none; }
+}

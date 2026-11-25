@@ -1,0 +1,148 @@
+/* --- Left panel ------------------------------------------------ */
+.side {
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-y: auto;
+}
+.sec {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.label { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.episode { font-size: 22px; font-weight: bold; }
+/* Points to the errors section, which sits below the task. */
+.error-mark { color: var(--bad); font-size: 16px; text-decoration: none; margin-left: 4px; }
+.status { font-weight: bold; letter-spacing: 0.1em; }
+.status.idle { color: var(--ok); }
+.status.collecting { color: var(--bad); }
+.arm-state.stopped { color: var(--muted); }
+.arm-state.started { color: var(--warn); }
+.arm-state.aligned { color: var(--ok); }
+.task-title { font-size: 18px; font-weight: bold; line-height: 1.4; }
+.task-description { color: var(--dim); line-height: 1.6; }
+/* The description, one section per heading (see split_description). */
+.task-sections { display: grid; gap: 6px; }
+.task-section {
+  border-left: 3px solid var(--line);
+  border-radius: 0 4px 4px 0;
+  padding: 3px 8px;
+  line-height: 1.5;
+}
+.task-section .label { margin-bottom: 1px; }
+.task-section.warn { border-color: var(--warn); background: rgba(221, 187, 51, 0.12); }
+.task-section.warn .label { color: var(--warn); font-weight: bold; }
+.task-section.setup { border-color: var(--accent); }
+.task-section.setup .label { color: var(--accent); }
+.task-section.done { border-color: var(--ok); }
+.task-section.done .label { color: var(--ok); }
+.task-section.reset { color: var(--muted); font-size: 12px; }
+/* Reference videos: whole frame (never cropped), two per row when
+   there are several. */
+.task-reference { display: grid; gap: 4px; }
+.task-reference-videos { display: grid; gap: 4px; }
+.task-reference-videos.grid { grid-template-columns: 1fr 1fr; }
+.task-reference video {
+  width: 100%;
+  max-height: 240px;
+  object-fit: contain;
+  background: #000;
+  display: block;
+}
+/* Errors reported to /api/error: only shown while there are any. */
+.errors { border-left: 3px solid var(--bad); }
+.errors .title { color: var(--bad); font-weight: bold; }
+.errors .hint { font-size: 12px; color: var(--dim); }
+.error-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.error-list li {
+  font-size: 12px;
+  color: var(--bad);
+  padding-left: 8px;
+  border-left: 2px solid var(--bad);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.error-list .meta { color: var(--muted); margin-right: 6px; }
+#live-alerts:empty { display: none; }
+#live-alerts li.warn { color: var(--warn); border-color: var(--warn); }
+.error-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+/* --- Stream status --------------------------------------------- */
+.camera-stats { display: flex; flex-direction: column; gap: 2px; }
+.camera-stats + .camera-stats { margin-top: 8px; }
+.stat-row {
+  display: grid;
+  grid-template-columns: 1fr 64px 72px;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 13px;
+}
+/* Cameras add a latency column. The numbers take the width they need in
+   the UI's language ("Latency 120 ms" is wider than "遅延 120 ms") and
+   never wrap; a long camera name is cut short instead. */
+.stat-row[data-cam] {
+  grid-template-columns: minmax(0, 1fr) minmax(56px, auto) minmax(64px, auto) auto;
+}
+.stat-row .cam-fps,
+.stat-row .cam-jitter,
+.stat-row .cam-latency { text-align: right; white-space: nowrap; }
+.stat-row[data-cam] .cam-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cam-latency { color: var(--muted); min-width: 72px; }
+.stat-row .cam-fps { color: var(--ok); }
+.stat-row .cam-jitter { color: var(--muted); }
+.stat-row.warn .cam-jitter { color: var(--warn); }
+.stat-row.error .cam-fps,
+.stat-row.error .cam-jitter { color: var(--bad); }
+.stat-row.stale .cam-fps,
+.stat-row.stale .cam-jitter,
+.stat-row.stale .cam-latency { color: var(--stale); }
+.device-name { color: var(--muted); font-size: 11px; margin-left: 6px; }
+/* Motors: one line per arm -- bus and hottest motor -- then a row per motor. */
+.arm-line {
+  display: grid;
+  grid-template-columns: 1fr auto 72px;
+  gap: 2px 8px;
+  align-items: baseline;
+  font-size: 13px;
+}
+.arm-line .hottest { text-align: right; }
+/* State rate: stands in for the CAN loop's timing. */
+.arm-rate { font-size: 12px; color: var(--ok); }
+/* A row per motor, J1..J7 then the gripper. */
+.arm-line .temp-head,
+.arm-line .temp-rows { grid-column: 1 / -1; }
+.arm-line .temp-head,
+.arm-line .temp-row {
+  display: grid;
+  grid-template-columns: 44px 52px 52px 1fr;
+  gap: 6px;
+  font-size: 12px;
+}
+.arm-line .temp-head { font-size: 10px; color: #666; }
+.arm-line .temp-row .joint { color: var(--muted); }
+.arm-line .temp-row .mos,
+.arm-line .temp-row .rotor { font-variant-numeric: tabular-nums; }
+/* DISABLED is torque off, not a fault, so only error codes are red. */
+.arm-line .mstatus { color: #666; }
+.arm-line .mstatus.enabled { color: var(--ok); }
+.arm-line .mstatus.fault { color: var(--bad); font-weight: bold; }
+.arm-line .mstatus.silent { color: #f90; font-weight: bold; }
+/* Bus state is a property of the whole interface: one badge per arm,
+   showing only the heaviest condition. */
+.bus-badge { font-size: 12px; color: var(--muted); }

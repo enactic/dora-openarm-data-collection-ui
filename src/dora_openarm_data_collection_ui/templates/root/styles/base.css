@@ -1,0 +1,63 @@
+/* Layout: the task panel on the left (at most a quarter of the
+   screen), the cameras on the right, all on one screen. */
+:root {
+  --bg: #111;
+  --panel: #1a1a1a;
+  --line: #2a2a2a;
+  --text: #ddd;
+  --muted: #888;
+  --ok: #3c6;
+  --warn: #db3;
+  --bad: #e44;
+  --accent: #4cc3d9;
+  --stale: #555;
+  --dim: #bbb;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+[hidden] { display: none !important; }
+
+html, body { height: 100%; }
+body {
+  font: 14px/1.5 "Noto Sans JP", "Noto Sans CJK JP", "Hiragino Sans",
+        "Yu Gothic", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+button, input { font: inherit; color: inherit; }
+
+.mono {
+  font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: minmax(260px, 25vw) 1fr;
+  height: 100%;
+}
+
+/* Small text buttons used in the panels and overlays. */
+.btn {
+  display: inline-block;
+  padding: 4px 12px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  text-decoration: none;
+  cursor: pointer;
+}
+.btn:hover:not(:disabled) { border-color: var(--muted); }
+
+/* Small grey notes. */
+.note { font-size: 12px; color: var(--muted); }
+
+/* A value coloured by its level: the scripts add ok, warn, error or
+   stale next to `tone`. */
+.tone.ok { color: var(--ok); }
+.tone.warn { color: var(--warn); }
+.tone.error { color: var(--bad); }
+.tone.stale { color: var(--stale); }
+

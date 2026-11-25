@@ -18,3 +18,4 @@
 /example/out/
 /uv.lock
 __pycache__/
+.DS_Store

@@ -1,0 +1,30 @@
+/* --- Lifter ---------------------------------------------------- */
+/* One line at the right end of the camera tabs (or of the key bar
+   when there is no camera view). */
+.lifter-panel {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.bar .lifter-panel { margin-right: auto; margin-left: 0; }
+.lifter-panel[hidden], .lifter-panel [hidden] { display: none; }
+.lifter-panel .label { margin: 0; }
+.lifter-height { font-size: 18px; font-weight: bold; white-space: nowrap; }
+.lifter-height.stale { color: var(--stale); }
+.lifter-buttons { display: flex; gap: 6px; }
+.lifter-btn {
+  min-width: 88px;
+  /* Held down, not clicked: no scrolling, selecting or long-press
+     menu on a touch screen. */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.lifter-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(76, 195, 217, 0.12);
+}
+.lifter-btn:disabled { color: var(--stale); cursor: not-allowed; }

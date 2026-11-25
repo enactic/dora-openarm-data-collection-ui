@@ -1,0 +1,49 @@
+<section class="sec">
+  <div class="camera-stats" id="camera-panel" hidden>
+    <div class="label">{{ t("cameras") }}</div>
+    {% for cam, label in [
+      ("camera_wrist_right", t("cam_wrist_right")),
+      ("camera_wrist_left", t("cam_wrist_left")),
+      ("camera_head_left", t("cam_head_left")),
+      ("camera_head_right", t("cam_head_right")),
+      ("camera_ceiling", t("cam_ceiling")),
+    ] -%}
+    <div class="stat-row stale" data-cam="{{ cam }}">
+      <span class="cam-name" title="{{ label }}">{{ label }}</span>
+      <span class="cam-fps mono">-- Hz</span>
+      <span class="cam-jitter mono">Δ -- ms</span>
+      <span class="cam-latency mono tone">{{ t("latency") }} --</span>
+    </div>
+    {% endfor -%}
+  </div>
+  <div class="camera-stats" id="ker-panel" hidden>
+    <div class="label">
+      {{ t("leader_ker") }}<span class="device-name"></span>
+    </div>
+    <div class="stat-row stale" data-ker="ker_rx">
+      <span class="cam-name">KER</span>
+      <span class="cam-fps mono">-- Hz</span>
+      <span class="cam-jitter mono">&Delta; -- ms</span>
+    </div>
+  </div>
+  <div class="camera-stats" id="vr-panel" hidden>
+    <div class="label">{{ t("vr_stream") }}</div>
+    <div class="stat-row stale" data-vr="vr_rx">
+      <span class="cam-name">VR</span>
+      <span class="cam-fps mono">-- Hz</span>
+      <span class="cam-jitter mono">Δ -- ms</span>
+    </div>
+  </div>
+  <div class="camera-stats arm-temps" id="arm-health-panel" hidden>
+    <div class="label">{{ t("motors_can") }}</div>
+    {% for side in ["left", "right"] -%}
+    <div class="arm-line" data-arm="{{ side }}">
+      <span class="cam-name">{{ t(side) }} <span class="arm-rate mono tone">-- Hz</span></span>
+      <span class="bus-badge mono tone">BUS --</span>
+      <span class="hottest mono tone stale">--</span>
+      <div class="temp-head"><span>{{ t("joint") }}</span><span>MOS</span><span>{{ t("rotor") }}</span><span>{{ t("motor_state") }}</span></div>
+      <div class="temp-rows"></div>
+    </div>
+    {% endfor -%}
+  </div>
+</section>

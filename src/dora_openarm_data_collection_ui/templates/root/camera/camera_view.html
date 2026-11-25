@@ -1,0 +1,53 @@
+{% from "root/camera/lifter.html" import lifter_panel with context -%}
+{% if camera_view_enabled -%}
+<div class="camera-view" id="camera-view"
+     data-view="{{ camera_view_default }}"{% if not camera_view_status %} hidden{% endif %}>
+  <div class="camera-view-head">
+    <div class="camera-tabs" role="tablist">
+      {% for view, label in [("head", t("view_head")), ("wrists", t("view_wrists")), ("all", t("view_all"))] -%}
+      {% set tab = namespace(wired=false, warn=false) -%}
+      {% for cam in camera_views[view] -%}
+        {% if cam in camera_view_status -%}
+          {% set tab.wired = true -%}
+          {% if not camera_view_status[cam] %}{% set tab.warn = true %}{% endif -%}
+        {% endif -%}
+      {% endfor -%}
+      <button type="button" class="camera-tab" role="tab" data-tab="{{ view }}"
+              data-cams="{{ camera_views[view] | join(" ") }}"
+              {%- if not tab.wired %} disabled{% endif %}>
+        {{ label }}<span class="tab-warn"{% if not tab.warn %} hidden{% endif %}>⚠</span>
+      </button>
+      {% endfor -%}
+    </div>
+    {{ lifter_panel() }}
+  </div>
+  {% for cam, label in [
+    ("camera_head_left", t("cam_head_left")),
+    ("camera_head_right", t("cam_head_right")),
+    ("camera_ceiling", t("cam_ceiling")),
+    ("camera_wrist_left", t("cam_wrist_left")),
+    ("camera_wrist_right", t("cam_wrist_right")),
+  ] -%}
+  <div class="camera-tile{% if camera_view_status.get(cam) == false %} stale{% endif %}"
+       data-cam-view="{{ cam }}"
+       data-views="{% for view, cams in camera_views.items() if cam in cams %}{{ view }} {% endfor %}"
+       {%- if cam not in camera_view_status %} hidden{% endif %}>
+    <span class="cam-name">{{ label }}</span>
+    <div class="frame">
+      <img alt="{{ label }}">
+      <div class="no-signal">{{ t("no_signal") }}</div>
+    </div>
+  </div>
+  {% endfor -%}
+</div>
+<script>
+  // Before the first paint, so the reload after every state change
+  // does not flash the default view.
+  try {
+    const view = sessionStorage.getItem("cameraView");
+    if (["head", "wrists", "all"].includes(view)) {
+      document.getElementById("camera-view").dataset.view = view;
+    }
+  } catch (e) {}
+</script>
+{% endif -%}

@@ -1,0 +1,25 @@
+        {# Below the task so that errors coming and going don't move the
+           task and its reference video; the mark by the episode shows them. -#}
+        <section class="sec errors" id="error-panel"{% if not state.errors %} hidden{% endif %}>
+          <div class="title">⚠ {{ t("errors_title") if state.errors else t("check_title") }}</div>
+          <!-- Live threshold warnings from the health streams, by key. -->
+          <ul class="error-list" id="live-alerts"></ul>
+          {% if state.errors -%}
+            <div class="hint">
+              {{ t("errors_hint") }}
+            </div>
+            <ul class="error-list">
+              {% for error in state.errors | reverse -%}
+                <li>
+                  <span class="meta mono">[{{ error.time }}] {{ error.source }}{% if error.count > 1 %} ×{{ error.count }}{% endif %}</span>
+                  {{ error.message }}
+                </li>
+              {% endfor -%}
+            </ul>
+            <div class="error-actions">
+              <form action="{{ url_for("_clear_errors") }}" method="post">
+                <input class="btn" type="submit" value="{{ t("clear_errors") }}">
+              </form>
+            </div>
+          {% endif -%}
+        </section>

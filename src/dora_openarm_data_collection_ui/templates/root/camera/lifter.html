@@ -1,0 +1,19 @@
+{# The lifter sits at the right end of the camera tabs, away from the
+   left panel, whose error messages keep moving things around. Shown
+   when the robot has a lifter (see _lifter_present in main.py). -#}
+{% macro lifter_panel() -%}
+  <div class="lifter-panel" id="lifter-panel"{% if not lifter_present %} hidden{% endif %}>
+    <span class="lifter-hint note"{% if not lifter_controls %} hidden{% endif %}>
+      {{- t("lifter_locked") if state.collecting else t("lifter_hold_to_move") -}}
+    </span>
+    <span class="label">{{ t("lifter") }}</span>
+    <span class="lifter-height mono stale"><span id="lifter-elevation">--</span> mm</span>
+    {# KER leader only (see LIFTER_COMMANDS in main.py). -#}
+    <span class="lifter-buttons"{% if not lifter_controls %} hidden{% endif %}>
+      {% for direction, label in [("up", t("lifter_up")), ("down", t("lifter_down"))] -%}
+        <button type="button" class="btn lifter-btn" data-lifter="{{ direction }}"
+                {%- if state.collecting %} disabled{% endif %}>{{ label }}</button>
+      {% endfor -%}
+    </span>
+  </div>
+{%- endmacro %}

@@ -1,0 +1,99 @@
+# Text shown by the UI, by key. Every key must be here: other languages
+# fall back to this file for the keys they do not have.
+# {name} placeholders are filled in by the code that shows the text.
+
+page_title: "OpenArm data collection"
+
+# Camera view
+view_head: "Head"
+view_wrists: "Head + wrists"
+view_all: "All cameras"
+cam_head_left: "Head (left)"
+cam_head_right: "Head (right)"
+cam_ceiling: "Ceiling"
+cam_wrist_left: "Wrist (left)"
+cam_wrist_right: "Wrist (right)"
+no_signal: "No signal"
+
+# Key bar
+hold: "Hold {key}"
+key_success: "Success"
+key_fail: "Fail"
+key_cancel: "Cancel"
+key_start: "Start"
+key_skip: "Skip task"
+key_arm_start: "Start Arm"
+key_arm_stop: "Pause Arm"
+key_quit: "Quit"
+
+# Lifter
+lifter: "Lifter"
+lifter_locked: "Locked while recording"
+lifter_hold_to_move: "Moves only while held"
+lifter_up: "▲ Up"
+lifter_down: "▼ Down"
+
+# Errors
+errors_title: "Errors"
+check_title: "Check"
+errors_hint: "Check these before you go on recording. If they do not go away, pass the details below on to the person in charge."
+clear_errors: "Clear errors"
+
+# Status
+episode: "Episode"
+show_errors: "Show errors"
+recording: "Recording"
+idle: "Idle"
+arm: "Arm"
+left: "Left"
+right: "Right"
+arm_status_stopped: "Stopped"
+arm_status_started: "Started (not aligned)"
+arm_status_aligned: "Aligned"
+
+# Streams
+cameras: "Cameras"
+camera: "Camera"
+latency: "Latency"
+leader_ker: "Leader (KER)"
+vr_stream: "VR stream (UDP)"
+motors_can: "Motors / CAN bus"
+joint: "Joint"
+rotor: "Rotor"
+motor_state: "State"
+not_received: "not received"
+camera_not_received: "not received (check the USB cable)"
+arm_left: "Left arm"
+arm_right: "Right arm"
+arm_rate: "state"
+can_bus: "CAN bus"
+
+# Task
+task: "Task"
+reference_videos: "Reference videos"
+reference_video_not_found: "Reference video not found: {video}"
+# Task description headings
+heading_caution: "Caution"
+heading_skip: "Skip"
+heading_prepare: "Preparation"
+heading_initial: "Initial state"
+heading_done: "Done"
+heading_done_when: "Done when"
+heading_reset: "Before the next round"
+
+# Overlays and dialogs
+cooldown: "Recording has just started; wait a moment before pressing"
+connection_lost_title: "Data collection stopped"
+connection_lost_hint: "This screen lost its connection to the data collection. It may have crashed."
+quitting: "Quitting…"
+ending_hint: "Saving the recorded data. Please wait."
+quit_done_title: "Data collection ended"
+quit_done: "You can close this page."
+confirm_quit: "Quit the current data collection?"
+
+# Errors recorded by the UI
+manual_not_found: "Operation manual not found: {path}"
+manual_unreadable: "Cannot read the operation manual: {error}"
+manual_no_sections: "The operation manual has no sections: {path}"
+lifter_command_failed: "Cannot send a command to the lifter: {error}"
+input_stopped: "Input {input} stopped (its node may have exited)"
