@@ -1,0 +1,116 @@
+/* --- Right side: keys and cameras ------------------------------ */
+.right { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--line);
+}
+/* Each action shows the key that does it; clicking works the same. */
+.key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px 2px 8px;
+  border: 1px solid var(--line);
+}
+.key kbd {
+  font: 11px "JetBrains Mono", ui-monospace, monospace;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.key input {
+  background: none;
+  border: 0;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+.key input:focus-visible { outline: 2px solid var(--accent); }
+.key.go { border-color: var(--ok); }
+.key.go input { color: var(--ok); }
+.key.stop { border-color: var(--bad); }
+.key.stop input { color: var(--bad); }
+.key.dim input { color: var(--muted); }
+/* --- Live camera view ------------------------------------------ */
+/* Three views: one head camera, the head with both wrists, or all
+   five. Each image is shown whole inside its tile, whatever its shape
+   (the head is 16:9, the others 16:10). */
+.camera-view {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  gap: 4px;
+  padding: 4px;
+}
+#camera-view[data-view="head"] {
+  grid-template: "bar" auto "hl" 1fr / 1fr;
+}
+/* Rows split about 4:3 so the head above and the wrists below both
+   use the height. */
+#camera-view[data-view="wrists"] {
+  grid-template: "bar bar" auto "hl hl" 4fr "wl wr" 3fr / 1fr 1fr;
+}
+#camera-view[data-view="all"] {
+  grid-template:
+    "bar bar bar bar bar bar" auto
+    "hl hl hl hr hr hr" 4fr
+    "ce ce wl wl wr wr" 3fr / 1fr 1fr 1fr 1fr 1fr 1fr;
+}
+.camera-view-head { grid-area: bar; display: flex; align-items: center; gap: 8px; }
+.camera-tabs { display: flex; gap: 4px; }
+.camera-tab {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  padding: 2px 12px;
+  cursor: pointer;
+}
+.camera-tab:disabled { opacity: 0.3; cursor: default; }
+.camera-tab .tab-warn { color: var(--warn); margin-left: 4px; }
+#camera-view[data-view="head"] .camera-tab[data-tab="head"],
+#camera-view[data-view="wrists"] .camera-tab[data-tab="wrists"],
+#camera-view[data-view="all"] .camera-tab[data-tab="all"] {
+  color: var(--bg);
+  background: var(--text);
+}
+/* Only the picked view's cameras are shown (and sent). */
+.camera-tile { position: relative; min-width: 0; min-height: 0; display: none; }
+#camera-view[data-view="head"] .camera-tile[data-views~="head"],
+#camera-view[data-view="wrists"] .camera-tile[data-views~="wrists"],
+#camera-view[data-view="all"] .camera-tile[data-views~="all"] {
+  display: block;
+}
+[data-cam-view="camera_head_left"] { grid-area: hl; }
+[data-cam-view="camera_head_right"] { grid-area: hr; }
+[data-cam-view="camera_ceiling"] { grid-area: ce; }
+[data-cam-view="camera_wrist_left"] { grid-area: wl; }
+[data-cam-view="camera_wrist_right"] { grid-area: wr; }
+.camera-tile .frame { position: absolute; inset: 0; background: #000; }
+.camera-tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.camera-tile .cam-name {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 1;
+  padding: 1px 6px;
+  font-size: 12px;
+  background: rgba(0, 0, 0, 0.6);
+}
+.camera-tile .no-signal {
+  display: none;
+  position: absolute;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  color: var(--bad);
+}
+.camera-tile.stale img { opacity: 0.25; }
+.camera-tile.stale .no-signal { display: flex; }

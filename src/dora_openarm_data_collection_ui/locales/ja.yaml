@@ -1,0 +1,97 @@
+# Japanese text. Keys missing here are shown in English (en.yaml).
+
+page_title: "OpenArm データ収集"
+
+# Camera view
+view_head: "頭部"
+view_wrists: "頭部＋手首"
+view_all: "全カメラ"
+cam_head_left: "頭部（左）"
+cam_head_right: "頭部（右）"
+cam_ceiling: "天井"
+cam_wrist_left: "手首（左）"
+cam_wrist_right: "手首（右）"
+no_signal: "映像なし"
+
+# Key bar
+hold: "{key} 長押し"
+key_success: "成功で終了"
+key_fail: "失敗で終了"
+key_cancel: "取り消し"
+key_start: "スタート"
+key_skip: "このタスクを飛ばす"
+key_arm_start: "アーム起動"
+key_arm_stop: "アーム停止"
+key_quit: "終了"
+
+# Lifter
+lifter: "リフター"
+lifter_locked: "収録中は動かせません"
+lifter_hold_to_move: "押している間だけ動きます"
+lifter_up: "▲ 上げる"
+lifter_down: "▼ 下げる"
+
+# Errors
+errors_title: "エラーが発生しています"
+check_title: "確認してください"
+errors_hint: "収録を続ける前に内容を確認してください。解消しない場合は、下の内容を担当者に伝えてください。"
+clear_errors: "エラー表示を消す"
+
+# Status
+episode: "エピソード"
+show_errors: "エラーを見る"
+recording: "収録中"
+idle: "待機中"
+arm: "アーム"
+left: "左"
+right: "右"
+arm_status_stopped: "停止中"
+arm_status_started: "起動済み（未同期）"
+arm_status_aligned: "同期済み"
+
+# Streams
+cameras: "カメラ映像"
+camera: "カメラ"
+latency: "遅延"
+leader_ker: "リーダー（KER）"
+vr_stream: "VR ストリーム（UDP）"
+motors_can: "モーター・CAN バス"
+joint: "関節"
+rotor: "ローター"
+motor_state: "状態"
+not_received: "届いていません"
+camera_not_received: "届いていません（USB を確認してください）"
+arm_left: "左アーム"
+arm_right: "右アーム"
+arm_rate: "状態"
+can_bus: "CAN バス"
+
+# Task
+task: "タスク"
+reference_videos: "参考動画"
+reference_video_not_found: "参考動画なし: {video}"
+# Task description headings
+heading_caution: "注意"
+heading_skip: "スキップ"
+heading_prepare: "準備"
+heading_initial: "開始時"
+heading_done: "完了"
+heading_done_when: "完了条件"
+heading_reset: "次の周の前に"
+
+# Overlays and dialogs
+cooldown: "収録開始から間もないため、少し待ってから押してください"
+connection_lost_title: "データ収集が停止しました"
+connection_lost_hint: "画面とデータ収集プログラムの接続が切れました。異常終了した可能性があります。"
+quitting: "終了しています…"
+ending_hint: "収録データを保存しています。しばらくお待ちください。"
+quit_done_title: "データ収集を終了しました"
+quit_done: "このページは閉じてかまいません。"
+confirm_quit: "現在のデータ収集を終了しますか？"
+
+# Errors recorded by the UI
+manual_not_found: "操作マニュアルが見つかりません: {path}"
+manual_unreadable: "操作マニュアルを読み込めません: {error}"
+manual_no_sections: "操作マニュアルに sections がありません: {path}"
+lifter_command_failed: "リフターに指示を送れません: {error}"
+input_stopped: "入力 {input} が停止しました（ノードが終了した可能性があります）"
