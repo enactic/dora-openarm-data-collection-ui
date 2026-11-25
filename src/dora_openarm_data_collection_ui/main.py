@@ -642,6 +642,8 @@ async def _main_dora(server):
                     _command_quit()
 
             await _notify_state_changed()
+    # Wake up /events streams. Otherwise, uvicorn waits for them forever.
+    await _notify_state_changed()
     server.should_exit = True
 
 
