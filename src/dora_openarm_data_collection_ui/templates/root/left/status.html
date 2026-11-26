@@ -2,7 +2,10 @@
   <div class="row">
     <div>
       <div class="label">{{ t("episode") }}</div>
-      <div class="episode mono">{{ state.episode_number }}</div>
+      <div class="episode mono">
+        {{- state.episode_number -}}
+        <a class="error-mark" id="error-mark" href="#errors" title="{{ t("show_errors") }}" aria-label="{{ t("show_errors") }}" hidden>⚠</a>
+      </div>
     </div>
     {% if state.collecting -%}
       <div class="status collecting">● {{ t("recording") }}</div>

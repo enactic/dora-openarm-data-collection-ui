@@ -66,5 +66,12 @@ joint: "joint"
 rotor: "rotor"
 motor_state: "status"
 
+# Errors
+show_errors: "Show errors"
+errors_title: "Errors"
+errors_hint: "Check these before you go on recording. If they don't go away, tell the person in charge about them."
+clear_errors: "Clear errors"
+node_failed: "Node {node} failed: {error}"
+
 # Overlays
 cooldown: "Recording too short — hold on a sec"
