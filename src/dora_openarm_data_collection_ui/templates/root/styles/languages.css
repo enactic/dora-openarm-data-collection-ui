@@ -1,0 +1,15 @@
+.languages {
+  position: fixed;
+  top: 16px;
+  right: 24px;
+}
+.languages select {
+  font: inherit;
+  font-size: 14px;
+  color: #e0e0e0;
+  background: #1a1a2e;
+  border: 1px solid rgba(136, 136, 136, 0.3);
+  border-radius: 8px;
+  padding: 4px 8px;
+  color-scheme: dark;
+}

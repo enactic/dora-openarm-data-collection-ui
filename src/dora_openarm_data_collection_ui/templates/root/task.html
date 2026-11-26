@@ -1,23 +1,23 @@
-<div class="task">Task: {{ state.task_index }}</div>
-<div>({{ state.task_title }})</div>
+<div class="task">{{ t("task") }}: {{ state.task_index }}</div>
+<div>({{ task_title }})</div>
 
 {% if state.collecting -%}
   <form id="finish-form" action="{{ url_for("_success") }}" method="post">
-    <input class="big-button finish" type="submit" value="Success!">
+    <input class="big-button finish" type="submit" value="{{ t("key_success") }}">
   </form>
 
   <form id="fail-form" action="{{ url_for("_fail") }}" method="post">
-    <input class="big-button finish" type="submit" value="Fail!">
+    <input class="big-button finish" type="submit" value="{{ t("key_fail") }}">
   </form>
 
   <form id="cancel-form" action="{{ url_for("_cancel") }}" method="post">
-    <input class="big-button finish" type="submit" value="Cancel!">
+    <input class="big-button finish" type="submit" value="{{ t("key_cancel") }}">
   </form>
 {% else -%}
   <form id="start-form" action="{{ url_for("_start") }}" method="post">
-    <input class="big-button start" type="submit" value="Start!">
+    <input class="big-button start" type="submit" value="{{ t("key_start") }}">
   </form>
   <form id="skip-form" action="{{ url_for("_skip") }}" method="post">
-    <input class="big-button start" type="submit" value="Skip task">
+    <input class="big-button start" type="submit" value="{{ t("key_skip") }}">
   </form>
 {% endif -%}

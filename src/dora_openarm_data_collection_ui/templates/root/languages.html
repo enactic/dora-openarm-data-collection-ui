@@ -1,0 +1,9 @@
+<form class="languages" method="get">
+  <select name="lang" aria-label="{{ t("language") }}"
+          onchange="this.form.submit()">
+    {% for code, name in languages.items() -%}
+      <option value="{{ code }}" lang="{{ code }}"
+              {%- if code == language %} selected{% endif %}>{{ name }}</option>
+    {% endfor -%}
+  </select>
+</form>
