@@ -594,6 +594,18 @@ def load_yaml(path):
         return yaml.safe_load(f)
 
 
+def load_metadata(path):
+    """Load a metadata file and validate it.
+
+    Raises ValueError when it can't be used.
+    """
+    metadata = load_yaml(path)
+    tasks = metadata.get("tasks") if isinstance(metadata, dict) else None
+    if not tasks:
+        raise ValueError(f"{path}: `tasks` is missing or empty")
+    return metadata
+
+
 async def _main_uvicorn(server):
     await server.serve()
 
@@ -717,7 +729,10 @@ def main():
     auto_open = args.auto_open
     global port
     port = args.port
-    metadata = load_yaml(args.metadata_file)
+    try:
+        metadata = load_metadata(args.metadata_file)
+    except ValueError as error:
+        parser.error(str(error))
     tasks = metadata["tasks"]
     state.task_title = tasks[state.task_index]["prompt"]
 
