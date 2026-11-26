@@ -581,7 +581,8 @@ async def _main_dora(server):
     # Bring the arm(s) up on boot. dora-openarm no longer auto-starts
     _command_arm_start()
     last_values = {}
-    while state.running:
+    # uvicorn sets `should_exit` by itself on SIGINT/SIGTERM.
+    while state.running and not server.should_exit:
         if node.is_empty():
             await asyncio.sleep(0.001)
             continue
@@ -642,6 +643,7 @@ async def _main_dora(server):
                     _command_quit()
 
             await _notify_state_changed()
+    state.running = False
     # Wake up /events streams. Otherwise, uvicorn waits for them forever.
     await _notify_state_changed()
     server.should_exit = True
