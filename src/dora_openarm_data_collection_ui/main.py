@@ -30,8 +30,10 @@ from fastapi.templating import Jinja2Templates
 import os
 import pathlib
 import pyarrow as pa
+import threading
 import time
 import uvicorn
+import webbrowser
 import yaml
 
 base_dir = os.path.dirname(__file__)
@@ -48,7 +50,9 @@ async def _lifespan(app: FastAPI):
     """Open a Web browser automatically if requested."""
     if auto_open:
         url = f"http://127.0.0.1:{port}"
-        await asyncio.create_subprocess_exec("open", url)
+        # In a thread because webbrowser.open() blocks until the browser
+        # exits with some browsers such as one specified by $BROWSER.
+        threading.Thread(target=webbrowser.open, args=(url,), daemon=True).start()
     yield
 
 
