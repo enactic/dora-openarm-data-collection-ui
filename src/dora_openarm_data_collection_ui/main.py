@@ -480,11 +480,18 @@ def _root(request: Request):
     language = _language(request)
     texts = messages[language]
 
-    def t(key, default=None):
-        """Return the text for the key in the UI's language."""
+    def t(key, default=None, /, **values):
+        """Return the text for the key in the UI's language.
+
+        `{name}`s in the text are filled in with `values`.
+        """
         if default is None:
-            return texts[key]
-        return texts.get(key, default)
+            text = texts[key]
+        else:
+            text = texts.get(key, default)
+        if values:
+            text = text.format(**values)
+        return text
 
     return templates.TemplateResponse(
         request=request,

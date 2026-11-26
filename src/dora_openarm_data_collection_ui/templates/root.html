@@ -1,37 +1,28 @@
 <!DOCTYPE html>
 <html lang="{{ language }}">
   <head>
+    <meta charset="utf-8">
     <title>{{ t("page_title") }}</title>
     <style>
 {% include "root/styles/base.css" %}
 
-{% include "root/styles/arm.css" %}
+{% include "root/styles/left_panel.css" %}
 
-{% include "root/styles/buttons.css" %}
-
-{% include "root/styles/streams.css" %}
-
-{% include "root/styles/arm_health.css" %}
-
-{% include "root/styles/overlays.css" %}
+{% include "root/styles/right_panel.css" %}
 
 {% include "root/styles/languages.css" %}
+
+{% include "root/styles/overlays.css" %}
     </style>
   </head>
   <body>
 {% include "root/overlays.html" %}
 
-{% include "root/languages.html" %}
+    <div class="app">
+{% include "root/left_panel.html" %}
 
-{% include "root/status.html" %}
-
-{% include "root/task.html" %}
-
-{% include "root/streams.html" %}
-
-{% include "root/arm_health.html" %}
-
-{% include "root/quit.html" %}
+{% include "root/right_panel.html" %}
+    </div>
 
     <script>
 {% include "root/scripts/actions.js" %}
