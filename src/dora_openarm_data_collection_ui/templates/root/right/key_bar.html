@@ -1,38 +1,39 @@
 {# Each action shows the key that does it (see actions.js); clicking
-   works the same. -#}
+   anywhere in its box works the same. The <label> makes the <kbd> part
+   of the button too. -#}
 <div class="bar">
 {% include "root/languages.html" %}
 
   {% if state.collecting -%}
     <form class="key go" id="finish-form" action="{{ url_for("_success") }}" method="post">
-      <kbd>C</kbd><input type="submit" value="{{ t("key_success") }}">
+      <label><kbd>C</kbd><input type="submit" value="{{ t("key_success") }}"></label>
     </form>
     <form class="key stop" id="fail-form" action="{{ url_for("_fail") }}" method="post">
-      <kbd>A</kbd><input type="submit" value="{{ t("key_fail") }}">
+      <label><kbd>A</kbd><input type="submit" value="{{ t("key_fail") }}"></label>
     </form>
     <form class="key" id="cancel-form" action="{{ url_for("_cancel") }}" method="post">
-      <kbd>{{ t("hold", key="A") }}</kbd><input type="submit" value="{{ t("key_cancel") }}">
+      <label><kbd>{{ t("hold", key="A") }}</kbd><input type="submit" value="{{ t("key_cancel") }}"></label>
     </form>
   {% else -%}
     <form class="key go" id="start-form" action="{{ url_for("_start") }}" method="post">
-      <kbd>C</kbd><input type="submit" value="{{ t("key_start") }}">
+      <label><kbd>C</kbd><input type="submit" value="{{ t("key_start") }}"></label>
     </form>
     <form class="key" id="skip-form" action="{{ url_for("_skip") }}" method="post">
-      <kbd>{{ t("hold", key="C") }}</kbd><input type="submit" value="{{ t("key_skip") }}">
+      <label><kbd>{{ t("hold", key="C") }}</kbd><input type="submit" value="{{ t("key_skip") }}"></label>
     </form>
   {% endif -%}
   {% if state.arm_status_right == "stopped" and state.arm_status_left == "stopped" -%}
     <form class="key" id="arm-start-form" action="{{ url_for("_arm_start") }}" method="post">
-      <kbd>{{ t("hold", key="B") }}</kbd><input type="submit" value="{{ t("key_arm_start") }}">
+      <label><kbd>{{ t("hold", key="B") }}</kbd><input type="submit" value="{{ t("key_arm_start") }}"></label>
     </form>
   {% else -%}
     <form class="key" id="arm-stop-form" action="{{ url_for("_arm_stop") }}" method="post">
-      <kbd>{{ t("hold", key="B") }}</kbd><input type="submit" value="{{ t("key_arm_stop") }}">
+      <label><kbd>{{ t("hold", key="B") }}</kbd><input type="submit" value="{{ t("key_arm_stop") }}"></label>
     </form>
   {% endif -%}
   {% if state.running -%}
     <form class="key dim" id="quit-form" action="{{ url_for("_quit") }}" method="post">
-      <kbd>B</kbd><input type="submit" value="{{ t("key_quit") }}">
+      <label><kbd>B</kbd><input type="submit" value="{{ t("key_quit") }}"></label>
     </form>
   {% endif -%}
 </div>
