@@ -449,106 +449,123 @@ async def _cancel(request: Request):
     return RedirectResponse(request.url_for("_root"), 303)
 
 
-@app.get("/events", response_class=EventSourceResponse)
-async def _events(request: Request) -> AsyncIterable[ServerSentEvent]:
-    try:
-        last_version = int(request.query_params.get("since"))
-    except (TypeError, ValueError):
-        last_version = state_version
-    while state.running:
-        async with _state_changed:
-            await _state_changed.wait_for(
-                lambda: state_version != last_version or not state.running
-            )
-        if not state.running:
-            break
-        last_version = state_version
-        yield ServerSentEvent(
-            data={
-                "collecting": state.collecting,
-                "episode_number": state.episode_number,
-                "task_index": state.task_index,
-                "arm_status_right": state.arm_status_right,
-                "arm_status_left": state.arm_status_left,
-            },
-            id=str(state_version),
-        )
+# How often /events sends the stream statistics and the arm health.
+STATS_INTERVAL_S = 0.5
 
 
-@app.get("/stats", response_class=EventSourceResponse)
-async def _stats() -> AsyncIterable[ServerSentEvent]:
-    """Push camera FPS / jitter snapshots to the browser every 500 ms."""
-    while state.running:
-        now = time.time()
-        snapshot = {}
-        for name, s in camera_stats.items():
-            if name not in seen_inputs:
-                # Not wired in this dataflow; the row stays hidden rather
-                # than sitting at "-- Hz" for the whole session.
-                continue
-            series = camera_timestamps[name]
-            if not series or now - series[-1] > CAMERA_STALE_AFTER_S:
-                snapshot[name] = {"fps": 0.0, "jitter_ms": 0.0}
-            else:
-                snapshot[name] = {"fps": s.fps, "jitter_ms": s.jitter_ms}
-        yield ServerSentEvent(data=snapshot)
-        await asyncio.sleep(0.5)
+def _state_snapshot() -> dict:
+    return {
+        "collecting": state.collecting,
+        "episode_number": state.episode_number,
+        "task_index": state.task_index,
+        "arm_status_right": state.arm_status_right,
+        "arm_status_left": state.arm_status_left,
+    }
 
 
-@app.get("/vr-stats", response_class=EventSourceResponse)
-async def _vr_stats() -> AsyncIterable[ServerSentEvent]:
-    """Push the real VR stream Hz / jitter snapshot to the browser every 500 ms."""
-    while state.running:
-        now = time.time()
-        if not vr_timestamps or now - vr_timestamps[-1] > VR_STALE_AFTER_S:
-            snapshot = {"fps": 0.0, "jitter_ms": 0.0}
+def _camera_stats_snapshot() -> dict:
+    """Return camera FPS / jitter."""
+    now = time.time()
+    snapshot = {}
+    for name, s in camera_stats.items():
+        if name not in seen_inputs:
+            # Not wired in this dataflow; the row stays hidden rather
+            # than sitting at "-- Hz" for the whole session.
+            continue
+        series = camera_timestamps[name]
+        if not series or now - series[-1] > CAMERA_STALE_AFTER_S:
+            snapshot[name] = {"fps": 0.0, "jitter_ms": 0.0}
         else:
-            snapshot = {"fps": vr_stats.fps, "jitter_ms": vr_stats.jitter_ms}
-        snapshot["present"] = any(i in seen_inputs for i in VR_RECEIVE_TIMES_INPUTS)
-        yield ServerSentEvent(data=snapshot)
-        await asyncio.sleep(0.5)
+            snapshot[name] = {"fps": s.fps, "jitter_ms": s.jitter_ms}
+    return snapshot
 
 
-@app.get("/ker-stats", response_class=EventSourceResponse)
-async def _ker_stats() -> AsyncIterable[ServerSentEvent]:
-    """Push the leader stream rate and the device it came from every 500 ms."""
-    while state.running:
-        now = time.time()
-        if not ker_timestamps or now - ker_timestamps[-1] > KER_STALE_AFTER_S:
-            snapshot = {"fps": 0.0, "jitter_ms": 0.0}
-        else:
-            snapshot = {"fps": ker_stats.fps, "jitter_ms": ker_stats.jitter_ms}
-        snapshot["present"] = KER_POSITION_INPUT in seen_inputs
-        snapshot["device"] = ker_device
-        yield ServerSentEvent(data=snapshot)
-        await asyncio.sleep(0.5)
+def _vr_stats_snapshot() -> dict:
+    """Return the real VR stream Hz / jitter."""
+    now = time.time()
+    if not vr_timestamps or now - vr_timestamps[-1] > VR_STALE_AFTER_S:
+        snapshot = {"fps": 0.0, "jitter_ms": 0.0}
+    else:
+        snapshot = {"fps": vr_stats.fps, "jitter_ms": vr_stats.jitter_ms}
+    snapshot["present"] = any(i in seen_inputs for i in VR_RECEIVE_TIMES_INPUTS)
+    return snapshot
 
 
-@app.get("/arm-health", response_class=EventSourceResponse)
-async def _arm_health() -> AsyncIterable[ServerSentEvent]:
-    """Push per-motor temperatures, motor status and bus state every 500 ms.
+def _ker_stats_snapshot() -> dict:
+    """Return the leader stream rate and the device it came from."""
+    now = time.time()
+    if not ker_timestamps or now - ker_timestamps[-1] > KER_STALE_AFTER_S:
+        snapshot = {"fps": 0.0, "jitter_ms": 0.0}
+    else:
+        snapshot = {"fps": ker_stats.fps, "jitter_ms": ker_stats.jitter_ms}
+    snapshot["present"] = KER_POSITION_INPUT in seen_inputs
+    snapshot["device"] = ker_device
+    return snapshot
+
+
+def _arm_health_snapshot() -> dict:
+    """Return per-motor temperatures, motor status and bus state.
 
     Sampled rather than pushed on change: the arms report at 250 Hz, and
     none of this needs to reach an operator sooner than this.
     """
+    now = time.time()
+    snapshot = {}
+    for side, health in arm_health.items():
+        fresh = health.updated_at and now - health.updated_at <= (
+            ARM_TEMPERATURE_STALE_AFTER_S
+        )
+        snapshot[side] = {
+            "present": f"arm_state_{side}" in seen_inputs,
+            "mos": health.mos if fresh else [],
+            "rotor": health.rotor if fresh else [],
+            "motor_status": health.motor_status if fresh else [],
+            "bus": _bus_state(health)
+            if fresh
+            else {"state": "UNKNOWN", "count": 0, "severity": "unknown"},
+        }
+    return snapshot
+
+
+@app.get("/events", response_class=EventSourceResponse)
+async def _events(request: Request) -> AsyncIterable[ServerSentEvent]:
+    """Push everything the page shows over one stream.
+
+    One stream per page, not one per panel: a browser opens only 6
+    connections to a host, shared by all of its tabs. With a stream per
+    panel, a second tab used them all up and no form could be submitted.
+
+    A "state" event is sent on every state change. The page reloads on
+    it. The others are sent every STATS_INTERVAL_S.
+    """
+    try:
+        last_version = int(request.query_params.get("since"))
+    except (TypeError, ValueError):
+        last_version = state_version
+    stats_at = 0.0
     while state.running:
-        now = time.time()
-        snapshot = {}
-        for side, health in arm_health.items():
-            fresh = health.updated_at and now - health.updated_at <= (
-                ARM_TEMPERATURE_STALE_AFTER_S
+        if state_version != last_version:
+            last_version = state_version
+            yield ServerSentEvent(
+                event="state", data=_state_snapshot(), id=str(state_version)
             )
-            snapshot[side] = {
-                "present": f"arm_state_{side}" in seen_inputs,
-                "mos": health.mos if fresh else [],
-                "rotor": health.rotor if fresh else [],
-                "motor_status": health.motor_status if fresh else [],
-                "bus": _bus_state(health)
-                if fresh
-                else {"state": "UNKNOWN", "count": 0, "severity": "unknown"},
-            }
-        yield ServerSentEvent(data=snapshot)
-        await asyncio.sleep(0.5)
+        now = time.monotonic()
+        if now >= stats_at:
+            stats_at = now + STATS_INTERVAL_S
+            yield ServerSentEvent(event="camera-stats", data=_camera_stats_snapshot())
+            yield ServerSentEvent(event="vr-stats", data=_vr_stats_snapshot())
+            yield ServerSentEvent(event="ker-stats", data=_ker_stats_snapshot())
+            yield ServerSentEvent(event="arm-health", data=_arm_health_snapshot())
+        async with _state_changed:
+            try:
+                await asyncio.wait_for(
+                    _state_changed.wait_for(
+                        lambda: state_version != last_version or not state.running
+                    ),
+                    max(0.0, stats_at - time.monotonic()),
+                )
+            except asyncio.TimeoutError:
+                pass
 
 
 @app.post("/quit")

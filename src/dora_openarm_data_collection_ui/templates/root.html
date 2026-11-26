@@ -545,17 +545,17 @@
         }
       });
 
+      // One stream for everything: see _events() in main.py.
       const eventSource = new EventSource("/events?since={{ state_version }}");
-      eventSource.onmessage = () => {
+      eventSource.addEventListener("state", () => {
         location.reload();
-      };
+      });
 
       const FPS_ERROR = 20;
       const JITTER_WARN_MS = 10;
       const JITTER_ERROR_MS = 30;
 
-      const statsSource = new EventSource("/stats");
-      statsSource.onmessage = (e) => {
+      eventSource.addEventListener("camera-stats", (e) => {
         const stats = JSON.parse(e.data);
         // Only the cameras this dataflow wired are reported; the rest of
         // the rows stay hidden instead of reading "-- Hz" forever.
@@ -584,14 +584,13 @@
           row.classList.toggle("error", isError);
           row.classList.toggle("warn", isWarn);
         }
-      };
+      });
 
       const VR_FPS_ERROR = 50;        // expect ~72 Hz from the headset
       const VR_JITTER_WARN_MS = 10;
       const VR_JITTER_ERROR_MS = 30;
 
-      const vrStatsSource = new EventSource("/vr-stats");
-      vrStatsSource.onmessage = (e) => {
+      eventSource.addEventListener("vr-stats", (e) => {
         const s = JSON.parse(e.data);
         document.getElementById("vr-panel").hidden = !s.present;
         const row = document.querySelector('[data-vr="vr_rx"]');
@@ -612,14 +611,13 @@
         const isWarn = !isError && s.jitter_ms > VR_JITTER_WARN_MS;
         row.classList.toggle("error", isError);
         row.classList.toggle("warn", isWarn);
-      };
+      });
 
       const KER_FPS_ERROR = 100;      // the leader is driven at 250 Hz
       const KER_JITTER_WARN_MS = 10;
       const KER_JITTER_ERROR_MS = 30;
 
-      const kerStatsSource = new EventSource("/ker-stats");
-      kerStatsSource.onmessage = (e) => {
+      eventSource.addEventListener("ker-stats", (e) => {
         const s = JSON.parse(e.data);
         document.getElementById("ker-panel").hidden = !s.present;
         const row = document.querySelector('[data-ker="ker_rx"]');
@@ -647,7 +645,7 @@
         const isWarn = !isError && s.jitter_ms > KER_JITTER_WARN_MS;
         row.classList.toggle("error", isError);
         row.classList.toggle("warn", isWarn);
-      };
+      });
 
       const TEMP_OK_MAX = 40;    // up to here green
       const TEMP_WARM_MAX = 70;  // up to here yellow, above it red
@@ -717,8 +715,7 @@
         }
       };
 
-      const armHealthSource = new EventSource("/arm-health");
-      armHealthSource.onmessage = (e) => {
+      eventSource.addEventListener("arm-health", (e) => {
         const health = JSON.parse(e.data);
         const anyPresent = Object.values(health).some((s) => s.present);
         document.getElementById("arm-health-panel").hidden = !anyPresent;
@@ -744,7 +741,7 @@
             setMotorStatus(row.querySelector(".mstatus"), status);
           }
         }
-      };
+      });
     </script>
   </body>
 </html>
