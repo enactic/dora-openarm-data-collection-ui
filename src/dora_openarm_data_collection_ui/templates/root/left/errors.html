@@ -1,0 +1,10 @@
+{# Below the task so that errors coming and going don't move the task.
+   The mark by the episode number links here. errors.js shows them. -#}
+<section class="sec errors" id="errors" hidden>
+  <div class="title">⚠ {{ t("errors_title") }}</div>
+  <div class="hint">{{ t("errors_hint") }}</div>
+  <ul class="error-list" id="error-list"></ul>
+  <form action="{{ url_for("_clear_errors") }}" method="post">
+    <input class="clear-errors" type="submit" value="{{ t("clear_errors") }}">
+  </form>
+</section>

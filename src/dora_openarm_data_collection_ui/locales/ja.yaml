@@ -60,5 +60,12 @@ joint: "関節"
 rotor: "ローター"
 motor_state: "状態"
 
+# Errors
+show_errors: "エラーを見る"
+errors_title: "エラーが発生しています"
+errors_hint: "収録を続ける前に内容を確認してください。解消しない場合は、下の内容を担当者に伝えてください。"
+clear_errors: "エラー表示を消す"
+node_failed: "ノード {node} が異常終了しました: {error}"
+
 # Overlays
 cooldown: "収録開始直後のため、少し待ってください"

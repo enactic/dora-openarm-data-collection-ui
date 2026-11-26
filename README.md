@@ -19,6 +19,25 @@ Tasks in the metadata may have `prompt_<language>` such as `prompt_ja`. It's
 shown instead of `prompt` in that language. Its parent language is also used
 such as `prompt_zh` for `zh-TW`. The recorder still uses `prompt`.
 
+## Errors
+
+The errors panel below the task shows:
+
+- errors from dora,
+- nodes in the dataflow that failed,
+- errors sent to `POST /api/errors` with a JSON object such as
+  `{"source": "recorder", "message": "Disk full"}`. It's for other
+  programs such as one that watches the dataflow.
+
+```bash
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"source": "recorder", "message": "Disk full"}' \
+  http://127.0.0.1:8000/api/errors
+```
+
+The same error again counts up instead of adding a new one. "Clear errors"
+in the panel clears them.
+
 ## License
 
 Licensed under the Apache License 2.0. See [LICENSE](LICENSE) for details.

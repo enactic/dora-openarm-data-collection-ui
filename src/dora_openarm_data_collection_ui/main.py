@@ -30,6 +30,7 @@ from fastapi.templating import Jinja2Templates
 import os
 import pathlib
 import pyarrow as pa
+import pydantic
 import threading
 import time
 import uvicorn
@@ -78,9 +79,46 @@ class State:
     task_index: int = 0
     arm_status_right: str = "stopped"
     arm_status_left: str = "stopped"
+    # Errors to show in the errors panel: {what: error}. The newest is
+    # the last. See _record_error().
+    errors: dict = dataclasses.field(default_factory=dict)
 
 
 state = State()
+
+# The number of errors to keep. Older errors are forgotten.
+MAX_ERRORS = 20
+
+
+def _record_error(source, message="", key=None, values=None):
+    """Remember an error to show it in the errors panel.
+
+    `message` is shown as is. Use `key` and `values` instead to show a
+    text in locales/ in the UI's language.
+
+    The same error again counts up the existing one and moves it to
+    the newest.
+
+    This doesn't change `state_version`. /events sends the errors
+    without reloading the page. A reload cancels long presses such as
+    skip.
+    """
+    # On one line.
+    message = " ".join(str(message).split())
+    values = {name: str(value) for name, value in (values or {}).items()}
+    what = (source, message, key, tuple(values.items()))
+    old = state.errors.pop(what, None)
+    state.errors[what] = {
+        "source": source,
+        "message": message,
+        "key": key,
+        "values": values,
+        "count": old["count"] + 1 if old else 1,
+        "time": datetime.datetime.now().strftime("%H:%M:%S"),
+    }
+    if len(state.errors) > MAX_ERRORS:
+        del state.errors[next(iter(state.errors))]
+
 
 _state_changed = asyncio.Condition()
 
@@ -573,7 +611,30 @@ async def _cancel(request: Request):
     return RedirectResponse(_url_for(request, "_root"), 303)
 
 
-# How often /events sends the stream statistics and the arm health.
+class ErrorReport(pydantic.BaseModel):
+    """An error from another program."""
+
+    source: str = "api"
+    # Not empty nor only spaces.
+    message: str = pydantic.Field(pattern=r"\S")
+
+
+@app.post("/api/errors")
+async def _api_errors(error: ErrorReport):
+    """Show an error from another program in the errors panel."""
+    _record_error(error.source, error.message)
+    return {}
+
+
+@app.post("/errors/clear")
+async def _clear_errors(request: Request):
+    """Clear the errors panel."""
+    state.errors.clear()
+    return RedirectResponse(_url_for(request, "_root"), 303)
+
+
+# How often /events sends the errors, the stream statistics and the arm
+# health.
 STATS_INTERVAL_S = 0.5
 
 
@@ -651,6 +712,21 @@ def _arm_health_snapshot() -> dict:
     return snapshot
 
 
+def _errors_snapshot(language) -> list:
+    """Return the errors, the newest first, in the language."""
+    return [
+        {
+            "time": error["time"],
+            "source": error["source"],
+            "count": error["count"],
+            "message": messages[language][error["key"]].format(**error["values"])
+            if error["key"]
+            else error["message"],
+        }
+        for error in reversed(state.errors.values())
+    ]
+
+
 @app.get("/events", response_class=EventSourceResponse)
 async def _events(request: Request) -> AsyncIterable[ServerSentEvent]:
     """Push everything the page shows over one stream.
@@ -660,12 +736,15 @@ async def _events(request: Request) -> AsyncIterable[ServerSentEvent]:
     panel, a second tab used them all up and no form could be submitted.
 
     A "state" event is sent on every state change. The page reloads on
-    it. The others are sent every STATS_INTERVAL_S.
+    it. The others are sent every STATS_INTERVAL_S. Text in them such
+    as errors is in the language of `?lang=` or the one that the Web
+    browser prefers.
     """
     try:
         last_version = int(request.query_params.get("since"))
     except (TypeError, ValueError):
         last_version = state_version
+    language = _language(request)
     stats_at = 0.0
     while state.running:
         if state_version != last_version:
@@ -676,6 +755,7 @@ async def _events(request: Request) -> AsyncIterable[ServerSentEvent]:
         now = time.monotonic()
         if now >= stats_at:
             stats_at = now + STATS_INTERVAL_S
+            yield ServerSentEvent(event="errors", data=_errors_snapshot(language))
             yield ServerSentEvent(event="camera-stats", data=_camera_stats_snapshot())
             yield ServerSentEvent(event="vr-stats", data=_vr_stats_snapshot())
             yield ServerSentEvent(event="ker-stats", data=_ker_stats_snapshot())
@@ -784,6 +864,17 @@ async def _process_dora_events(server):
         event = node.next()
         if event["type"] == "STOP":
             state.running = False
+        elif event["type"] == "ERROR":
+            _record_error("dora", event["error"])
+        elif event["type"] == "NODE_FAILED":
+            # Not INPUT_CLOSED. It's also sent when a node finishes
+            # normally.
+            failure = event["value"]
+            _record_error(
+                "dora",
+                key="node_failed",
+                values={"node": failure["source_node_id"], "error": failure["error"]},
+            )
         elif event["type"] == "INPUT":
             event_id = event["id"]
             seen_inputs.add(event_id)

@@ -28,6 +28,41 @@
 /* --- Task ------------------------------------------------------ */
 .task-title { font-size: 18px; font-weight: bold; line-height: 1.4; }
 
+/* --- Errors ---------------------------------------------------- */
+.error-mark {
+  color: var(--bad);
+  font-size: 16px;
+  text-decoration: none;
+  margin-left: 4px;
+}
+.errors { border-left: 3px solid var(--bad); }
+.errors .title { color: var(--bad); font-weight: bold; }
+.errors .hint { font-size: 12px; color: var(--muted); }
+.error-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.error-list li {
+  font-size: 12px;
+  color: var(--bad);
+  padding-left: 8px;
+  border-left: 2px solid var(--bad);
+  overflow-wrap: anywhere;
+}
+.error-list .meta { color: var(--muted); }
+.clear-errors {
+  margin-top: 4px;
+  padding: 2px 10px;
+  background: none;
+  border: 1px solid var(--line);
+  cursor: pointer;
+}
+.clear-errors:hover { border-color: var(--muted); }
+
 /* --- Streams --------------------------------------------------- */
 .camera-stats { display: flex; flex-direction: column; gap: 2px; }
 .camera-stats + .camera-stats { margin-top: 8px; }
