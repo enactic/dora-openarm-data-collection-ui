@@ -742,6 +742,8 @@ def main():
     auto_open = args.auto_open
     global port
     port = args.port
+    if args.metadata_file is None:
+        parser.error("--metadata-file or METADATA_FILE is required")
     try:
         metadata = load_metadata(args.metadata_file)
     except ValueError as error:
