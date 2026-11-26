@@ -1,0 +1,50 @@
+.big-button {
+  font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  font-size: 28px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 20px 48px;
+  margin: 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.start {
+  background: rgba(0, 255, 136, 0.1);
+  color: #00ff88;
+  border: 2px solid rgba(0, 255, 136, 0.4);
+  box-shadow: 0 0 12px rgba(0, 255, 136, 0.15);
+}
+.start:hover {
+  background: rgba(0, 255, 136, 0.2);
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+}
+
+.finish {
+  background: rgba(255, 51, 85, 0.1);
+  color: #ff3355;
+  border: 2px solid rgba(255, 51, 85, 0.4);
+  box-shadow: 0 0 12px rgba(255, 51, 85, 0.15);
+}
+.finish:hover {
+  background: rgba(255, 51, 85, 0.2);
+  box-shadow: 0 0 20px rgba(255, 51, 85, 0.3);
+}
+
+.quit {
+  background: rgba(136, 136, 136, 0.1);
+  color: #888;
+  border: 2px solid rgba(136, 136, 136, 0.3);
+  font-size: 18px;
+  padding: 12px 28px;
+  margin-top: 24px;
+}
+.quit:hover {
+  background: rgba(136, 136, 136, 0.2);
+  color: #aaa;
+  box-shadow: 0 0 12px rgba(136, 136, 136, 0.2);
+}
+
+form { display: inline; }

@@ -1,0 +1,5 @@
+{% if state.running -%}
+  <form id="quit-form" action="{{ url_for("_quit") }}" method="post">
+    <input class="big-button quit" type="submit" value="Quit">
+  </form>
+{% endif -%}
