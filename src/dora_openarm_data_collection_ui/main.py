@@ -39,6 +39,13 @@ import yaml
 base_dir = os.path.dirname(__file__)
 templates = Jinja2Templates(directory=f"{base_dir}/templates")
 
+# The UI's text, one YAML file per language. English is used for text that
+# isn't in the other languages.
+LOCALES_DIR = pathlib.Path(base_dir) / "locales"
+DEFAULT_LANGUAGE = "en"
+# {language: {key: text}}. Languages are in lower case such as "zh-tw".
+messages = {}
+
 node = None
 
 auto_open = False
@@ -67,7 +74,6 @@ class State:
     running: bool = True
     episode_number: int = 0
     task_index: int = 0
-    task_title: str = ""
     arm_status_right: str = "stopped"
     arm_status_left: str = "stopped"
 
@@ -354,7 +360,6 @@ def next_task():
     state.task_index += 1
     if state.task_index >= len(tasks):
         state.task_index = 0
-    state.task_title = tasks[state.task_index]["prompt"]
 
 
 def _command_start():
@@ -404,13 +409,99 @@ def _command_arm_stop():
     node.send_output("arm_command", pa.array(["stop"]))
 
 
+def _accepted_languages(header):
+    """Return the language tags in an Accept-Language header, preferred first."""
+    tags = []
+    for item in header.split(","):
+        tag, _, parameters = item.partition(";")
+        try:
+            q = float(parameters.strip().removeprefix("q=") or 1)
+        except ValueError:
+            continue
+        if q > 0:
+            tags.append((q, tag.strip()))
+    tags.sort(key=lambda tag: -tag[0])
+    return [tag for _, tag in tags]
+
+
+def _parent_languages(language):
+    """Return the language and its parents: "zh-hant-tw", "zh-hant", "zh"."""
+    subtags = language.lower().split("-")
+    return ["-".join(subtags[:i]) for i in range(len(subtags), 0, -1)]
+
+
+def _find_language(tag):
+    """Return the UI's language for a language tag or None.
+
+    The most specific one is used: "zh-Hant-TW", "zh-Hant" and then "zh".
+    """
+    for language in _parent_languages(tag):
+        if language in messages:
+            return language
+    return None
+
+
+def _task_title(task, language):
+    """Return the task's prompt in the language if it has one.
+
+    The most specific one is used: prompt_zh-TW, prompt_zh and then prompt.
+    """
+    prompts = {str(key).lower(): value for key, value in task.items()}
+    for parent in _parent_languages(language):
+        prompt = prompts.get(f"prompt_{parent}")
+        if prompt:
+            return prompt
+    return task["prompt"]
+
+
+def _language(request):
+    """Return the UI's language: ?lang=, Accept-Language or the default."""
+    tags = [request.query_params.get("lang", "")]
+    tags += _accepted_languages(request.headers.get("accept-language", ""))
+    for tag in tags:
+        language = _find_language(tag)
+        if language:
+            return language
+    return DEFAULT_LANGUAGE
+
+
+def _url_for(request, name):
+    """Return the URL for the name with ?lang= if it's specified."""
+    url = request.url_for(name)
+    lang = request.query_params.get("lang")
+    if lang:
+        url = url.include_query_params(lang=lang)
+    return url
+
+
 @app.get("/", response_class=HTMLResponse)
 def _root(request: Request):
     """Render the main HTML."""
+    language = _language(request)
+    texts = messages[language]
+
+    def t(key, default=None):
+        """Return the text for the key in the UI's language."""
+        if default is None:
+            return texts[key]
+        return texts.get(key, default)
+
     return templates.TemplateResponse(
         request=request,
         name="root.html",
-        context={"state": state, "state_version": state_version},
+        context={
+            "language": language,
+            "languages": {
+                code: messages[code]["language_name"] for code in sorted(messages)
+            },
+            "t": t,
+            # Display only. The recorder uses `prompt`.
+            "task_title": _task_title(tasks[state.task_index], language),
+            # Keep ?lang= after a form is submitted.
+            "url_for": lambda name: _url_for(request, name),
+            "state": state,
+            "state_version": state_version,
+        },
     )
 
 
@@ -418,7 +509,7 @@ def _root(request: Request):
 async def _start(request: Request):
     _command_start()
     await _notify_state_changed()
-    return RedirectResponse(request.url_for("_root"), 303)
+    return RedirectResponse(_url_for(request, "_root"), 303)
 
 
 @app.post("/skip")
@@ -426,21 +517,21 @@ async def _skip(request: Request):
     """Skip the next task."""
     next_task()
     await _notify_state_changed()
-    return RedirectResponse(request.url_for("_root"), 303)
+    return RedirectResponse(_url_for(request, "_root"), 303)
 
 
 @app.post("/success")
 async def _success(request: Request):
     _command_success()
     await _notify_state_changed()
-    return RedirectResponse(request.url_for("_root"), 303)
+    return RedirectResponse(_url_for(request, "_root"), 303)
 
 
 @app.post("/fail")
 async def _fail(request: Request):
     _command_fail()
     await _notify_state_changed()
-    return RedirectResponse(request.url_for("_root"), 303)
+    return RedirectResponse(_url_for(request, "_root"), 303)
 
 
 @app.post("/cancel")
@@ -450,7 +541,7 @@ async def _cancel(request: Request):
     state.collecting = False
     state.episode_number += 1
     await _notify_state_changed()
-    return RedirectResponse(request.url_for("_root"), 303)
+    return RedirectResponse(_url_for(request, "_root"), 303)
 
 
 # How often /events sends the stream statistics and the arm health.
@@ -575,27 +666,45 @@ async def _events(request: Request) -> AsyncIterable[ServerSentEvent]:
 @app.post("/quit")
 def _quit(request: Request):
     _command_quit()
-    return RedirectResponse(request.url_for("_root"), 303)
+    return RedirectResponse(_url_for(request, "_root"), 303)
 
 
 @app.post("/arm/start")
 def _arm_start(request: Request):
     """Start (power on) the arm(s)."""
     _command_arm_start()
-    return RedirectResponse(request.url_for("_root"), 303)
+    return RedirectResponse(_url_for(request, "_root"), 303)
 
 
 @app.post("/arm/stop")
 def _arm_stop(request: Request):
     """Pause (stop) the arm(s)."""
     _command_arm_stop()
-    return RedirectResponse(request.url_for("_root"), 303)
+    return RedirectResponse(_url_for(request, "_root"), 303)
 
 
 def load_yaml(path):
     """Load a YAML file."""
     with open(path, encoding="utf-8") as f:
         return yaml.safe_load(f)
+
+
+def load_messages():
+    """Load the UI's text in all languages.
+
+    Text that isn't in a language is taken from its parent languages such
+    as "zh" for "zh-TW" and then English.
+    """
+    files = {path.stem.lower(): load_yaml(path) for path in LOCALES_DIR.glob("*.yaml")}
+    loaded = {}
+    for language, texts in files.items():
+        merged = dict(files[DEFAULT_LANGUAGE])
+        for parent in reversed(_parent_languages(language)):
+            merged |= files.get(parent, {})
+        # Not from other languages: each language has its own name.
+        merged["language_name"] = texts.get("language_name", language)
+        loaded[language] = merged
+    return loaded
 
 
 def load_metadata(path):
@@ -744,6 +853,8 @@ def main():
         type=int,
     )
     args = parser.parse_args()
+    global messages
+    messages = load_messages()
     global auto_open
     auto_open = args.auto_open
     global port
@@ -755,7 +866,6 @@ def main():
     except ValueError as error:
         parser.error(str(error))
     tasks = metadata["tasks"]
-    state.task_title = tasks[state.task_index]["prompt"]
 
     node = dora.Node()
     asyncio.run(_main_async())

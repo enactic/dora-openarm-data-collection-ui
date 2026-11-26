@@ -1,0 +1,63 @@
+# Copyright 2026 Enactic, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Japanese text. Keys missing here are shown in English (en.yaml).
+
+language_name: "日本語"
+language: "言語"
+
+page_title: "OpenArm データ収集"
+
+# Status
+episode: "エピソード"
+recording: "収録中"
+idle: "待機中"
+arm: "アーム"
+left: "左"
+right: "右"
+arm_status_stopped: "停止中"
+arm_status_started: "起動済み（未同期）"
+arm_status_aligned: "同期済み"
+key_arm_start: "アーム起動"
+key_arm_stop: "アーム停止"
+
+# Task
+task: "タスク"
+key_success: "成功で終了"
+key_fail: "失敗で終了"
+key_cancel: "取り消し"
+key_start: "スタート"
+key_skip: "このタスクを飛ばす"
+key_quit: "終了"
+
+# Streams
+cameras: "カメラ映像"
+cam_wrist_right: "手首（右）"
+cam_wrist_left: "手首（左）"
+cam_head_left: "頭部（左）"
+cam_head_right: "頭部（右）"
+cam_ceiling: "天井"
+leader_stream: "リーダー"
+vr_stream: "VR ストリーム（UDP）"
+
+# Motor temperatures
+motor_temperatures: "モーター温度"
+arm_left: "左アーム"
+arm_right: "右アーム"
+joint: "関節"
+rotor: "ローター"
+motor_state: "状態"
+
+# Overlays
+cooldown: "収録開始直後のため、少し待ってください"

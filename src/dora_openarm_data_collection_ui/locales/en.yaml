@@ -1,0 +1,67 @@
+# Copyright 2026 Enactic, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Text shown by the UI, by key. Every key must be here: other languages
+# fall back to this file for the keys they do not have.
+
+# The name of this language in this language. It's used for the
+# menu to change the language.
+language_name: "English"
+# The label of the menu.
+language: "Language"
+
+page_title: "OpenArm data collection UI"
+
+# Status
+episode: "Episode"
+recording: "Collecting"
+idle: "Idle"
+arm: "Arm"
+left: "L"
+right: "R"
+arm_status_stopped: "STOPPED"
+arm_status_started: "STARTED"
+arm_status_aligned: "ALIGNED"
+key_arm_start: "Start Arm"
+key_arm_stop: "Pause Arm"
+
+# Task
+task: "Task"
+key_success: "Success!"
+key_fail: "Fail!"
+key_cancel: "Cancel!"
+key_start: "Start!"
+key_skip: "Skip task"
+key_quit: "Quit"
+
+# Streams
+cameras: "Camera streams"
+cam_wrist_right: "wrist R"
+cam_wrist_left: "wrist L"
+cam_head_left: "head L"
+cam_head_right: "head R"
+cam_ceiling: "ceiling"
+leader_stream: "Leader stream"
+vr_stream: "VR stream (raw UDP)"
+
+# Motor temperatures
+motor_temperatures: "Motor temperatures"
+arm_left: "LEFT"
+arm_right: "RIGHT"
+joint: "joint"
+rotor: "rotor"
+motor_state: "status"
+
+# Overlays
+cooldown: "Recording too short — hold on a sec"

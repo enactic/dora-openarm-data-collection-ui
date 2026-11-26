@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<html>
+<html lang="{{ language }}">
   <head>
-    <title>OpenArm data collection UI</title>
+    <title>{{ t("page_title") }}</title>
     <style>
 {% include "root/styles/base.css" %}
 
@@ -14,10 +14,14 @@
 {% include "root/styles/arm_health.css" %}
 
 {% include "root/styles/overlays.css" %}
+
+{% include "root/styles/languages.css" %}
     </style>
   </head>
   <body>
 {% include "root/overlays.html" %}
+
+{% include "root/languages.html" %}
 
 {% include "root/status.html" %}
 

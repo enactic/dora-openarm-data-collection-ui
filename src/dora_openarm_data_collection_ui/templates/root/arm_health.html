@@ -1,13 +1,13 @@
 <div class="camera-stats arm-temps" id="arm-health-panel" hidden>
-  <div class="camera-stats-title">Motor temperatures</div>
+  <div class="camera-stats-title">{{ t("motor_temperatures") }}</div>
   <div class="temp-sides">
     {% for side in ["left", "right"] -%}
     <div class="temp-side" data-arm="{{ side }}">
       <div class="temp-side-title">
-        {{ side | upper }}<span class="bus-badge">BUS --</span>
+        {{ t("arm_" + side) }}<span class="bus-badge">BUS --</span>
       </div>
       <div class="temp-head">
-        <span>joint</span><span>MOS</span><span>rotor</span><span>status</span>
+        <span>{{ t("joint") }}</span><span>MOS</span><span>{{ t("rotor") }}</span><span>{{ t("motor_state") }}</span>
       </div>
       <div class="temp-rows"></div>
     </div>
