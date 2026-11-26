@@ -411,36 +411,41 @@ def _root(request: Request):
 
 
 @app.post("/start")
-def _start(request: Request):
+async def _start(request: Request):
     _command_start()
+    await _notify_state_changed()
     return RedirectResponse(request.url_for("_root"), 303)
 
 
 @app.post("/skip")
-def _skip(request: Request):
+async def _skip(request: Request):
     """Skip the next task."""
     next_task()
+    await _notify_state_changed()
     return RedirectResponse(request.url_for("_root"), 303)
 
 
 @app.post("/success")
-def _success(request: Request):
+async def _success(request: Request):
     _command_success()
+    await _notify_state_changed()
     return RedirectResponse(request.url_for("_root"), 303)
 
 
 @app.post("/fail")
-def _fail(request: Request):
+async def _fail(request: Request):
     _command_fail()
+    await _notify_state_changed()
     return RedirectResponse(request.url_for("_root"), 303)
 
 
 @app.post("/cancel")
-def _cancel(request: Request):
+async def _cancel(request: Request):
     """Cancel the current episode."""
     node.send_output("command", pa.array(["cancel"]))
     state.collecting = False
     state.episode_number += 1
+    await _notify_state_changed()
     return RedirectResponse(request.url_for("_root"), 303)
 
 
