@@ -616,6 +616,19 @@ async def _main_uvicorn(server):
 
 async def _main_dora(server):
     """Quit the Web application when this dataflow is stopped."""
+    try:
+        await _process_dora_events(server)
+    finally:
+        # Even when processing failed. Otherwise, the page stays but
+        # nothing works, and SIGTERM can't stop this node.
+        state.running = False
+        # Wake up /events streams. Otherwise, uvicorn waits for them forever.
+        await _notify_state_changed()
+        server.should_exit = True
+
+
+async def _process_dora_events(server):
+    """Process dora events until this dataflow is stopped."""
     # Bring the arm(s) up on boot. dora-openarm no longer auto-starts
     _command_arm_start()
     last_values = {}
@@ -681,10 +694,6 @@ async def _main_dora(server):
                     _command_quit()
 
             await _notify_state_changed()
-    state.running = False
-    # Wake up /events streams. Otherwise, uvicorn waits for them forever.
-    await _notify_state_changed()
-    server.should_exit = True
 
 
 async def _main_async():
