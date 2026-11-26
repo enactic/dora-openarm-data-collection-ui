@@ -1,0 +1,21 @@
+<section class="sec">
+  <div class="row">
+    <div>
+      <div class="label">{{ t("episode") }}</div>
+      <div class="episode mono">{{ state.episode_number }}</div>
+    </div>
+    {% if state.collecting -%}
+      <div class="status collecting">● {{ t("recording") }}</div>
+    {% else -%}
+      <div class="status idle">{{ t("idle") }}</div>
+    {% endif -%}
+  </div>
+  <div class="note">
+    {{ t("arm") }}
+    {% for side in ["left", "right"] -%}
+      {% set s = state["arm_status_" ~ side] -%}
+      {% if not loop.first %}·{% endif %}
+      {{ t(side) }} <span class="arm-state {{ s }}">{{ t("arm_status_" ~ s, s | upper) }}</span>
+    {% endfor -%}
+  </div>
+</section>

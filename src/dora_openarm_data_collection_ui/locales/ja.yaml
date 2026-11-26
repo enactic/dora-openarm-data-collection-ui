@@ -40,6 +40,7 @@ key_cancel: "取り消し"
 key_start: "スタート"
 key_skip: "このタスクを飛ばす"
 key_quit: "終了"
+hold: "{key} 長押し"
 
 # Streams
 cameras: "カメラ映像"

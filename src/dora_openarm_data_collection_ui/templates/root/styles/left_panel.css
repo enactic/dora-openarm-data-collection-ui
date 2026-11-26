@@ -1,0 +1,89 @@
+.side {
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-y: auto;
+}
+.sec {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.label { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+/* --- Status ---------------------------------------------------- */
+.episode { font-size: 22px; font-weight: bold; }
+.status { font-weight: bold; letter-spacing: 0.1em; }
+.status.idle { color: var(--ok); }
+.status.collecting { color: var(--bad); }
+.arm-state.stopped { color: var(--muted); }
+.arm-state.started { color: var(--warn); }
+.arm-state.aligned { color: var(--ok); }
+
+/* --- Task ------------------------------------------------------ */
+.task-title { font-size: 18px; font-weight: bold; line-height: 1.4; }
+
+/* --- Streams --------------------------------------------------- */
+.camera-stats { display: flex; flex-direction: column; gap: 2px; }
+.camera-stats + .camera-stats { margin-top: 8px; }
+.stat-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 13px;
+}
+.stat-row .cam-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stat-row .cam-fps,
+.stat-row .cam-jitter { text-align: right; white-space: nowrap; }
+/* Wide enough for "60.0 Hz" and "Δ 10.0 ms", so the columns line up. */
+.stat-row .cam-fps { min-width: 64px; color: var(--ok); }
+.stat-row .cam-jitter { min-width: 72px; color: var(--muted); }
+.stat-row.warn .cam-jitter { color: var(--warn); }
+.stat-row.error .cam-fps,
+.stat-row.error .cam-jitter { color: var(--bad); }
+.stat-row.stale .cam-fps,
+.stat-row.stale .cam-jitter { color: var(--stale); }
+.device-name { color: var(--muted); margin-left: 6px; }
+
+/* --- Motor temperatures ---------------------------------------- */
+/* One arm after the other: the panel is too narrow to put them side
+   by side. */
+.arm-temps .temp-side + .temp-side { margin-top: 6px; }
+.arm-temps .temp-side-title { font-size: 13px; }
+.arm-temps .temp-head,
+.arm-temps .temp-row {
+  display: grid;
+  grid-template-columns: 44px 52px 52px 1fr;
+  gap: 6px;
+  align-items: baseline;
+  font-size: 12px;
+}
+.arm-temps .temp-head { font-size: 10px; color: #666; }
+.arm-temps .joint { color: var(--muted); }
+/* 40 C and below green, 70 C and below yellow, above that red. */
+.arm-temps .ok { color: var(--ok); }
+.arm-temps .warm { color: var(--warn); }
+.arm-temps .hot { color: var(--bad); }
+.arm-temps .unknown { color: var(--stale); }
+/* What the motor says about itself. DISABLED is torque off, not a
+   fault, so only codes the motor flags as errors are red. */
+.arm-temps .mstatus { color: #666; }
+.arm-temps .mstatus.enabled { color: var(--ok); }
+.arm-temps .mstatus.fault { color: var(--bad); font-weight: bold; }
+.arm-temps .mstatus.silent { color: #f90; font-weight: bold; }
+/* Bus state is a property of the whole interface: one badge per arm,
+   showing only the heaviest condition. */
+.bus-badge { font-size: 12px; color: var(--muted); margin-left: 8px; }
+.bus-badge.ok { color: var(--ok); }
+.bus-badge.warn { color: var(--warn); }
+.bus-badge.error { color: var(--bad); }

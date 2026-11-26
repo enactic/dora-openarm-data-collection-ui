@@ -53,6 +53,8 @@ where = ["src"]
 "dora_openarm_data_collection_ui.templates" = [
     "*.html",
     "root/*.html",
+    "root/left/*.html",
+    "root/right/*.html",
     "root/scripts/*.js",
     "root/styles/*.css",
 ]

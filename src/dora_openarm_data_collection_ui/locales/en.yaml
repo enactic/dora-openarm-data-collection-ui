@@ -13,7 +13,8 @@
 # limitations under the License.
 
 # Text shown by the UI, by key. Every key must be here: other languages
-# fall back to this file for the keys they do not have.
+# fall back to this file for the keys they do not have. {name}s are
+# filled in by the templates.
 
 # The name of this language in this language. It's used for the
 # menu to change the language.
@@ -44,6 +45,8 @@ key_cancel: "Cancel!"
 key_start: "Start!"
 key_skip: "Skip task"
 key_quit: "Quit"
+# The key to hold for the action.
+hold: "Hold {key}"
 
 # Streams
 cameras: "Camera streams"
