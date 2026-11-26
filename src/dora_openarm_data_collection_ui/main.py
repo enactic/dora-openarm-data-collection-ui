@@ -607,6 +607,12 @@ def load_metadata(path):
     tasks = metadata.get("tasks") if isinstance(metadata, dict) else None
     if not tasks:
         raise ValueError(f"{path}: `tasks` is missing or empty")
+    # Check all tasks now. A broken one would otherwise fail only when
+    # it's reached during data collection.
+    if not isinstance(tasks, list) or not all(
+        isinstance(task, dict) and "prompt" in task for task in tasks
+    ):
+        raise ValueError(f"{path}: each task in `tasks` must have `prompt`")
     return metadata
 
 
