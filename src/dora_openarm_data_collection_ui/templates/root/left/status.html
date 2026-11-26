@@ -10,7 +10,7 @@
       <div class="status idle">{{ t("idle") }}</div>
     {% endif -%}
   </div>
-  <div class="note">
+  <div class="arms">
     {{ t("arm") }}
     {% for side in ["left", "right"] -%}
       {% set s = state["arm_status_" ~ side] -%}

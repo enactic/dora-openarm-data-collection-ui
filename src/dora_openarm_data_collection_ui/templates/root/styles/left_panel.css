@@ -21,9 +21,17 @@
 .status { font-weight: bold; letter-spacing: 0.1em; }
 .status.idle { color: var(--ok); }
 .status.collecting { color: var(--bad); }
-.arm-state.stopped { color: var(--muted); }
-.arm-state.started { color: var(--warn); }
-.arm-state.aligned { color: var(--ok); }
+/* Badges: the operator checks here that the arms are ready. */
+.arms { font-size: 13px; color: var(--muted); line-height: 1.8; }
+.arm-state {
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: bold;
+  color: var(--bg);
+  background: var(--muted);
+}
+.arm-state.started { background: var(--warn); }
+.arm-state.aligned { background: var(--ok); }
 
 /* --- Task ------------------------------------------------------ */
 .task-title { font-size: 18px; font-weight: bold; line-height: 1.4; }
