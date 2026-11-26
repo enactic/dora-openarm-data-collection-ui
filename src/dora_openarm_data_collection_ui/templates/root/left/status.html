@@ -15,7 +15,7 @@
     {% for side in ["left", "right"] -%}
       {% set s = state["arm_status_" ~ side] -%}
       {% if not loop.first %}·{% endif %}
-      {{ t(side) }} <span class="arm-state {{ s }}">{{ t("arm_status_" ~ s, s | upper) }}</span>
+      <span class="arm-side">{{ t(side) }} <span class="arm-state {{ s }}">{{ t("arm_status_" ~ s, s | upper) }}</span></span>
     {% endfor -%}
   </div>
 </section>

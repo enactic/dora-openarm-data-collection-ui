@@ -18,6 +18,8 @@
 
 /* --- Status ---------------------------------------------------- */
 .episode { font-size: 22px; font-weight: bold; }
+/* Wrap between the arms, not inside a state such as "同期済み". */
+.arm-side { white-space: nowrap; }
 .status { font-weight: bold; letter-spacing: 0.1em; }
 .status.idle { color: var(--ok); }
 .status.collecting { color: var(--bad); }
