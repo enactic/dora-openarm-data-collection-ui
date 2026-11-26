@@ -64,6 +64,8 @@ class State:
     """The current state."""
 
     collecting: bool = False
+    # time.monotonic() when the current episode started.
+    collecting_started_at: float = 0.0
     running: bool = True
     episode_number: int = 0
     task_index: int = 0
@@ -370,10 +372,28 @@ def _command_start():
     # From here the bus badges report this episode, not the whole session.
     _reset_bus_baselines()
     state.collecting = True
+    state.collecting_started_at = time.monotonic()
+
+
+# Success and fail just after start are ignored. They are probably
+# accidental double presses. This is for all of the controller, the
+# mouse and other tabs. actions.js also has MIN_RECORDING_MS for the
+# keyboard to show a message.
+MIN_RECORDING_S = 1.0
+
+
+def _recording_too_short():
+    """Return whether the current episode has just started."""
+    return (
+        state.collecting
+        and time.monotonic() - state.collecting_started_at < MIN_RECORDING_S
+    )
 
 
 def _command_success():
     """Finish the current episode successfully."""
+    if _recording_too_short():
+        return
     node.send_output("command", pa.array(["success"]))
     state.collecting = False
     state.episode_number += 1
@@ -382,6 +402,8 @@ def _command_success():
 
 def _command_fail():
     """Finish the current episode unsuccessfully."""
+    if _recording_too_short():
+        return
     node.send_output("command", pa.array(["fail"]))
     state.collecting = False
     state.episode_number += 1
