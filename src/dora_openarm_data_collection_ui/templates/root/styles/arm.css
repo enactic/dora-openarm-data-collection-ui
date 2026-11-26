@@ -1,0 +1,31 @@
+.arm-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: #1a1a2e;
+  padding: 16px 28px;
+  border-radius: 16px;
+}
+.arm-label {
+  font-size: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: #888;
+}
+.arm-badge {
+  font-size: 16px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 6px 16px;
+  border-radius: 9999px;
+  color: #0a0a0f;
+}
+.arm-badge.stopped { background: #888; }
+.arm-badge.started { background: #ffcc00; }
+.arm-badge.aligned { background: #00ff88; }
+.big-button.arm-toggle {
+  font-size: 18px;
+  padding: 12px 28px;
+  margin: 0;
+}

@@ -1,0 +1,22 @@
+.cooldown-toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: #1a1a2e;
+  color: #ffcc00;
+  border: 2px solid rgba(255, 204, 0, 0.5);
+  padding: 12px 28px;
+  border-radius: 9999px;
+  font-size: 16px;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  box-shadow: 0 0 12px rgba(255, 204, 0, 0.25);
+}
+.cooldown-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
